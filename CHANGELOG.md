@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.1.0] - 2026-09-21
+### Added
+- Órdenes reales: alta, detalle, transiciones, presupuesto con items y aprobación
+- Descuento atómico de stock al aprobar (bloquea 422 sin stock)
+- Clientes/equipos reales: alta, edición, búsqueda, 409 en duplicadas
+- Inventario real: movimientos auditados en transacción
+- Caja real: tasa vigente, cobros con saldo/vuelto, cierre dual
+- Reportes: ingresos por día/método, ticket promedio, cuentas por cobrar
+- Login contra usuarios en DB + script users:create
+- Navegación en la home
+
 ## [1.0.0] - 2026-09-21
 ### Added
 - Órdenes de servicio con estados auditados, presupuesto USD/VES y consumo de stock atómico
