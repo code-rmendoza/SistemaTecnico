@@ -1,8 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Alert, Button, Card, EstadoBadge, Field, Page, inputCls } from "@/components/ui";
 import { cn } from "@/components/cn";
+import { useToast } from "@/components/toast";
+
+interface Tecnico {
+  id: string;
+  nombre: string;
+  email: string;
+}
+
+interface Foto {
+  id: string;
+  url: string;
+  tipo: string;
+  nota: string | null;
+  creadoEn: string;
+}
 
 interface Orden {
   id: string;
@@ -11,6 +26,7 @@ interface Orden {
   fallaDeclarada: string;
   diagnostico: string | null;
   prioridad: string;
+  tecnicoId: string | null;
   historial: { de: string; a: string; usuario: string; fecha: string }[];
   presupuesto: {
     manoObraUSD: number;
@@ -32,9 +48,17 @@ const SIGUIENTES: Record<string, string[]> = {
   LISTA_ENTREGA: ["ENTREGADA"]
 };
 
-type Tab = "transiciones" | "presupuesto" | "historial";
+const FOTO_TIPOS = [
+  { value: "equipo", label: "Equipo" },
+  { value: "dano", label: "Daño" },
+  { value: "reparacion", label: "Reparación" },
+  { value: "otro", label: "Otro" },
+];
+
+type Tab = "transiciones" | "presupuesto" | "fotos" | "historial";
 
 export default function OrdenDetalle({ params }: { params: { id: string } }) {
+  const { toast } = useToast();
   const [orden, setOrden] = useState<Orden | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("transiciones");
@@ -45,19 +69,70 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
   const [cant, setCant] = useState("1");
   const [precio, setPrecio] = useState("");
 
+  // Técnicos
+  const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
+  const [tecnicoId, setTecnicoId] = useState<string>("");
+  const [asignando, setAsignando] = useState(false);
+
+  // Fotos
+  const [fotos, setFotos] = useState<Foto[]>([]);
+  const [fotoTipo, setFotoTipo] = useState("equipo");
+  const [fotoNota, setFotoNota] = useState("");
+  const [fotoUrl, setFotoUrl] = useState("");
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
+  const [subiendoFile, setSubiendoFile] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   async function cargar() {
     const res = await fetch(`/api/ordenes/${params.id}`);
     if (!res.ok) {
       setError("Orden no encontrada");
       return;
     }
-    setOrden((await res.json()).orden);
+    const data = await res.json();
+    setOrden(data.orden);
+    setTecnicoId(data.orden.tecnicoId ?? "");
+  }
+
+  async function cargarTecnicos() {
+    const res = await fetch("/api/usuarios");
+    if (res.ok) {
+      const data = await res.json();
+      setTecnicos(data.usuarios.filter((u: { rol: string }) => u.rol === "tecnico"));
+    }
+  }
+
+  async function cargarFotos() {
+    const res = await fetch(`/api/ordenes/${params.id}/fotos`);
+    if (res.ok) setFotos((await res.json()).fotos);
   }
 
   useEffect(() => {
     cargar();
+    cargarTecnicos();
+    cargarFotos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function asignarTecnico() {
+    if (!tecnicoId) return;
+    setAsignando(true);
+    setError(null);
+    const res = await fetch(`/api/ordenes/${params.id}/asignar`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tecnicoId }),
+    });
+    if (!res.ok) {
+      const msg = (await res.json().catch(() => null))?.error ?? "No se pudo asignar";
+      setError(msg);
+      toast(msg, "error");
+    } else {
+      toast("Técnico asignado", "success");
+      cargar();
+    }
+    setAsignando(false);
+  }
 
   async function transicionar(a: string) {
     setError(null);
@@ -71,6 +146,7 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
       return;
     }
     setOrden((await res.json()).orden);
+    toast(`Estado → ${a.replace(/_/g, " ")}`, "success");
   }
 
   async function presupuestar(e: React.FormEvent) {
@@ -90,6 +166,7 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
       setError((await res.json().catch(() => null))?.error ?? "No se pudo presupuestar");
       return;
     }
+    toast("Presupuesto creado", "success");
     cargar();
   }
 
@@ -100,7 +177,58 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
       setError((await res.json().catch(() => null))?.error ?? "No se pudo aprobar");
       return;
     }
+    toast("Presupuesto aprobado", "success");
     setOrden((await res.json()).orden);
+  }
+
+  async function agregarFotoUrl(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fotoUrl.trim()) return;
+    setSubiendoFoto(true);
+    const res = await fetch(`/api/ordenes/${params.id}/fotos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: fotoUrl.trim(), tipo: fotoTipo, nota: fotoNota.trim() || undefined }),
+    });
+    if (res.ok) {
+      toast("Foto agregada", "success");
+      setFotoUrl("");
+      setFotoNota("");
+      cargarFotos();
+    } else {
+      toast("Error al agregar foto", "error");
+    }
+    setSubiendoFoto(false);
+  }
+
+  async function subirArchivo(file: File) {
+    setSubiendoFile(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      const res = await fetch(`/api/ordenes/${params.id}/fotos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: base64, tipo: fotoTipo, nota: fotoNota.trim() || undefined }),
+      });
+      if (res.ok) {
+        toast("Foto subida", "success");
+        setFotoNota("");
+        cargarFotos();
+      } else {
+        toast("Error al subir foto", "error");
+      }
+      setSubiendoFile(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function eliminarFoto(fotoId: string) {
+    const res = await fetch(`/api/ordenes/${params.id}/fotos?fotoId=${fotoId}`, { method: "DELETE" });
+    if (res.ok) {
+      toast("Foto eliminada", "info");
+      cargarFotos();
+    }
   }
 
   if (error && !orden)
@@ -125,6 +253,7 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: "transiciones", label: "Flujo", icon: <IconArrow className="h-4 w-4" /> },
     { id: "presupuesto", label: "Presupuesto", icon: <IconDoc className="h-4 w-4" /> },
+    { id: "fotos", label: `Fotos (${fotos.length})`, icon: <IconCam className="h-4 w-4" /> },
     { id: "historial", label: "Historial", icon: <IconClock className="h-4 w-4" /> },
   ];
 
@@ -161,6 +290,36 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
         </div>
       </div>
       {error && <Alert>{error}</Alert>}
+
+      {/* Asignar técnico */}
+      <Card className="mt-4">
+        <h3 className="text-sm font-semibold text-slate-900 mb-2">Asignar técnico</h3>
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <Field id="tecnico" label="Técnico">
+              <select
+                id="tecnico"
+                className={inputCls}
+                value={tecnicoId}
+                onChange={(e) => setTecnicoId(e.target.value)}
+              >
+                <option value="">Sin asignar</option>
+                {tecnicos.map((t) => (
+                  <option key={t.id} value={t.id}>{t.nombre} ({t.email})</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Button
+            variant="outline"
+            onClick={asignarTecnico}
+            disabled={asignando || tecnicoId === (orden.tecnicoId ?? "")}
+            className="mb-0.5"
+          >
+            {asignando ? "Guardando…" : "Asignar"}
+          </Button>
+        </div>
+      </Card>
 
       {/* Tabs */}
       <div className="mt-6 flex gap-1 border-b border-slate-200">
@@ -319,6 +478,100 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
           </Card>
         )}
 
+        {tab === "fotos" && (
+          <div className="space-y-4">
+            {/* Subir foto */}
+            <Card>
+              <h3 className="text-sm font-semibold text-slate-900 mb-3">Agregar foto</h3>
+              <form onSubmit={agregarFotoUrl} className="flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field id="ftipo" label="Tipo">
+                    <select id="ftipo" className={inputCls} value={fotoTipo} onChange={(e) => setFotoTipo(e.target.value)}>
+                      {FOTO_TIPOS.map((t) => (
+                        <option key={t.value} value={t.value}>{t.label}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field id="fnota" label="Nota (opcional)">
+                    <input id="fnota" className={inputCls} value={fotoNota} onChange={(e) => setFotoNota(e.target.value)} placeholder="Ej: daño en pantalla" />
+                  </Field>
+                </div>
+                <Field id="furl" label="URL de la imagen">
+                  <input id="furl" className={inputCls} value={fotoUrl} onChange={(e) => setFotoUrl(e.target.value)} placeholder="https://..." />
+                </Field>
+                <Button type="submit" disabled={subiendoFoto || !fotoUrl.trim()}>
+                  {subiendoFoto ? "Agregando…" : "Agregar por URL"}
+                </Button>
+              </form>
+              <div className="mt-3 flex items-center gap-3">
+                <div className="h-px flex-1 bg-slate-200" />
+                <span className="text-xs text-slate-400">o</span>
+                <div className="h-px flex-1 bg-slate-200" />
+              </div>
+              <div className="mt-3">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) subirArchivo(file);
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={subiendoFile}
+                  className="w-full"
+                >
+                  {subiendoFile ? "Subiendo…" : "Subir archivo"}
+                </Button>
+              </div>
+            </Card>
+
+            {/* Galería */}
+            {fotos.length === 0 ? (
+              <Card>
+                <p className="text-sm text-slate-500 text-center py-4">Sin fotos aún.</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {fotos.map((f) => (
+                  <div key={f.id} className="group relative rounded-xl border border-slate-200 overflow-hidden bg-white">
+                    <div className="aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
+                      {f.url.startsWith("data:") ? (
+                        <img src={f.url} alt={f.nota ?? "Foto"} className="h-full w-full object-cover" />
+                      ) : (
+                        <img src={f.url} alt={f.nota ?? "Foto"} className="h-full w-full object-cover" onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden");
+                        }} />
+                      )}
+                      <div className="hidden text-xs text-slate-400 text-center p-2">No se pudo cargar</div>
+                    </div>
+                    <div className="p-2">
+                      <span className="inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                        {FOTO_TIPOS.find((t) => t.value === f.tipo)?.label ?? f.tipo}
+                      </span>
+                      {f.nota && <p className="mt-1 text-xs text-slate-500 truncate">{f.nota}</p>}
+                      <p className="mt-0.5 text-xs text-slate-400">{String(f.creadoEn).slice(0, 10)}</p>
+                    </div>
+                    <button
+                      onClick={() => eliminarFoto(f.id)}
+                      className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {tab === "historial" && (
           <Card>
             <h3 className="text-sm font-semibold text-slate-900 mb-3">Historial de cambios</h3>
@@ -351,7 +604,7 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
   );
 }
 
-/* ── Tab icons ── */
+/* ── Icons ── */
 
 function IconArrow({ className }: { className?: string }) {
   return (
@@ -365,6 +618,15 @@ function IconDoc({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+    </svg>
+  );
+}
+
+function IconCam({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
     </svg>
   );
 }
