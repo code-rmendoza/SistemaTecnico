@@ -112,6 +112,19 @@ model Orden {
   equipo         Equipo      @relation(fields: [equipoId], references: [id])
   historial      EstadoHistorial[]
   presupuesto    Presupuesto?
+  fotos          Foto[]
+}
+
+model Foto {
+  id        String   @id @default(cuid())
+  ordenId   String
+  orden     Orden    @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  url       String
+  tipo      String   @default("equipo")
+  nota      String?
+  creadoEn  DateTime @default(now())
+
+  @@index([ordenId])
 }
 
 model EstadoHistorial {

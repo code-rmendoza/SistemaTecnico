@@ -15,11 +15,17 @@ interface Cliente {
   equipos: { id: string; marca: string; modelo: string; tipo: string }[];
 }
 
+interface Tecnico {
+  id: string;
+  nombre: string;
+}
+
 interface Orden {
   id: string;
   codigo: string;
   estado: string;
   fallaDeclarada: string;
+  tecnicoId: string | null;
   equipo: { marca: string; modelo: string; cliente: { nombre: string } };
 }
 
@@ -30,15 +36,17 @@ export default function OrdenesPage() {
   const [clienteId, setClienteId] = useState("");
   const [equipoId, setEquipoId] = useState("");
   const [falla, setFalla] = useState("");
+  const [tecnicos, setTecnicos] = useState<Tecnico[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
 
   async function cargar() {
     setLoading(true);
-    const [ro, rc] = await Promise.all([fetch("/api/ordenes"), fetch("/api/clientes")]);
+    const [ro, rc, rt] = await Promise.all([fetch("/api/ordenes"), fetch("/api/clientes"), fetch("/api/usuarios")]);
     if (ro.ok) setOrdenes((await ro.json()).ordenes);
     if (rc.ok) setClientes((await rc.json()).clientes);
+    if (rt.ok) setTecnicos((await rt.json()).usuarios.filter((u: { rol: string }) => u.rol === "tecnico"));
     setLoading(false);
   }
 
@@ -48,6 +56,7 @@ export default function OrdenesPage() {
 
   const equipos = clientes.find((c) => c.id === clienteId)?.equipos ?? [];
   const paginadas = ordenes.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+  const nombreTecnico = (id: string | null) => id ? tecnicos.find((t) => t.id === id)?.nombre ?? "—" : null;
 
   async function crear(e: React.FormEvent) {
     e.preventDefault();
@@ -120,7 +129,17 @@ export default function OrdenesPage() {
                       <div>
                         <p className="text-sm font-bold text-slate-900">{o.codigo}</p>
                         <p className="text-sm text-slate-500">{o.equipo.marca} {o.equipo.modelo} · {o.equipo.cliente.nombre}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{o.fallaDeclarada}</p>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <p className="text-xs text-slate-400 truncate">{o.fallaDeclarada}</p>
+                          {nombreTecnico(o.tecnicoId) && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 ring-1 ring-blue-200">
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0" />
+                              </svg>
+                              {nombreTecnico(o.tecnicoId)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <EstadoBadge estado={o.estado} />
                     </div>
