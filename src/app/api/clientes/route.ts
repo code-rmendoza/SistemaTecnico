@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, clientes });
   } catch {
     return NextResponse.json(
-      { ok: false, error: "DB no disponible (pendiente migrate). Usa /clientes demo local." },
+      { ok: false, error: "Servicio no disponible" },
       { status: 503 }
     );
   }
@@ -38,9 +38,12 @@ export async function POST(req: NextRequest) {
   try {
     const cliente = await prisma.cliente.create({ data: body.data });
     return NextResponse.json({ ok: true, cliente }, { status: 201 });
-  } catch {
+  } catch (e) {
+    if ((e as { code?: string })?.code === "P2002") {
+      return NextResponse.json({ error: "Cédula/RIF ya registrada" }, { status: 409 });
+    }
     return NextResponse.json(
-      { ok: false, error: "DB no disponible (pendiente migrate)" },
+      { ok: false, error: "Servicio no disponible" },
       { status: 503 }
     );
   }
