@@ -7,7 +7,10 @@ export function LogoutButton() {
   }
 
   return (
-    <button onClick={salir} className="text-sm text-slate-300 hover:text-white">
+    <button
+      onClick={salir}
+      className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+    >
       Salir
     </button>
   );

@@ -1,4 +1,7 @@
+import { Inter } from "next/font/google";
 import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata = {
   title: "Sistema Técnico",
@@ -8,8 +11,8 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es-VE">
-      <body className="min-h-screen bg-stone-100 text-stone-900 antialiased">{children}</body>
+    <html lang="es-VE" className={inter.variable}>
+      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased font-sans">{children}</body>
     </html>
   );
 }
