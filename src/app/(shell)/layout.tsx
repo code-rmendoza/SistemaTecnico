@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { verifySession } from "@/lib/auth";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/topbar";
+import { ToastProvider } from "@/components/toast";
 
 export default function ShellLayout({ children }: { children: React.ReactNode }) {
   const token = cookies().get("session")?.value;
@@ -19,12 +20,14 @@ export default function ShellLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="min-h-screen">
-      <Sidebar userRole={rol} />
-      <TopBar email={email} rol={rol} />
-      <div className="pl-[var(--sidebar-width)] pt-[var(--topbar-height)] transition-all duration-300">
-        <main className="animate-fade-in">{children}</main>
+    <ToastProvider>
+      <div className="min-h-screen">
+        <Sidebar userRole={rol} />
+        <TopBar email={email} rol={rol} />
+        <div className="md:pl-[var(--sidebar-width)] pt-[var(--topbar-height)] transition-all duration-300">
+          <main className="animate-fade-in">{children}</main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
