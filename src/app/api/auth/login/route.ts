@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { Role, signSession, verifyPassword, hashPassword } from "@/lib/auth";
+import { crearVentana } from "@/modules/portal/service";
 
 const LoginInput = z.object({
   email: z.string().email(),
@@ -26,7 +27,20 @@ function getSecret(): string {
   return s;
 }
 
+// In-memory por instancia (suficiente v1; multi-instancia requeriría Redis).
+// 20/min: frena fuerza bruta (bcrypt ~100ms/intento) sin castigar uso normal ni e2e.
+const intentosLogin = crearVentana({ maxIntentos: 20, ventanaMs: 60_000 });
+
+function ipDe(req: NextRequest): string {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+}
+
 export async function POST(req: NextRequest) {
+  try {
+    intentosLogin.registrar(`login:${ipDe(req)}`);
+  } catch {
+    return NextResponse.json({ error: "Demasiados intentos, espera un minuto" }, { status: 429 });
+  }
   const body = LoginInput.safeParse(await req.json().catch(() => null));
   if (!body.success) {
     return NextResponse.json({ error: "Credenciales inválidas" }, { status: 400 });
