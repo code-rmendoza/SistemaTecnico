@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { verifySession } from "@/lib/auth";
 import { Card, Page } from "@/components/ui";
 
 const LINKS = [
@@ -12,12 +15,23 @@ const LINKS = [
 ];
 
 export default function Home() {
+  // Sin sesión, la raíz manda al login (las secciones se protegen en sus layouts).
+  const token = cookies().get("session")?.value;
+  let valido = false;
+  if (token) {
+    try {
+      verifySession(token, process.env.JWT_SECRET ?? "dev-secret-solo-local");
+      valido = true;
+    } catch {
+      valido = false;
+    }
+  }
+  if (!valido) redirect("/login");
   return (
     <Page wide>
       <h1 className="text-2xl font-bold tracking-tight">Sistema Técnico — Taller (VE)</h1>
       <p className="mt-1 text-sm text-stone-500">
-        es-VE · VES con referencia USD · America/Caracas.{" "}
-        <a className="font-medium text-emerald-700 underline" href="/login">Iniciar sesión</a>
+        es-VE · VES con referencia USD · America/Caracas.
       </p>
       <nav aria-label="Módulos" className="mt-4 grid gap-3 sm:grid-cols-2">
         {LINKS.map((l) => (
