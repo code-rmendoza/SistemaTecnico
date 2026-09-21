@@ -12,7 +12,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       include: {
         equipo: { include: { cliente: true } },
         historial: { orderBy: { fecha: "asc" } },
-        presupuesto: true
+        presupuesto: { include: { items: true } }
       }
     });
     if (!orden) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
