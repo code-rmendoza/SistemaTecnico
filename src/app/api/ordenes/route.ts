@@ -18,9 +18,29 @@ async function siguienteCodigo(): Promise<string> {
   return `OT-${year}-${String(n + 1).padStart(4, "0")}`;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   requireRole(["admin", "recepcion", "tecnico"]);
+  const codigo = req.nextUrl.searchParams.get("codigo")?.trim();
   try {
+    if (codigo) {
+      const orden = await prisma.orden.findFirst({
+        where: { codigo: { equals: codigo, mode: "insensitive" } },
+        include: { equipo: { include: { cliente: true } }, presupuesto: true }
+      });
+      if (!orden) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
+      const cobrados = await prisma.cobro.aggregate({
+        where: { ordenId: orden.id },
+        _sum: { totalVES: true }
+      });
+      const total = orden.presupuesto ? Number(orden.presupuesto.totalVES) : 0;
+      return NextResponse.json({
+        ok: true,
+        orden,
+        totalVES: total,
+        cobradoVES: Number(cobrados._sum.totalVES ?? 0),
+        saldoVES: total - Number(cobrados._sum.totalVES ?? 0)
+      });
+    }
     const ordenes = await prisma.orden.findMany({
       orderBy: { creadoEn: "desc" },
       take: 50,

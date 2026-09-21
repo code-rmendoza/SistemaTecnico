@@ -153,12 +153,41 @@ model TasaCambio {
 }
 
 model Cobro {
-  id          String   @id @default(cuid())
+  id          String       @id @default(cuid())
   ordenId     String
-  tasaCobro   Decimal  @db.Decimal(18, 2)
-  totalVES    Decimal  @db.Decimal(14, 2)
-  totalUSDRef Decimal  @db.Decimal(14, 2)
-  creadoEn    DateTime @default(now())
+  usuario     String       @default("sistema")
+  tasaCobro   Decimal      @db.Decimal(18, 2)
+  totalVES    Decimal      @db.Decimal(14, 2)
+  totalUSDRef Decimal      @db.Decimal(14, 2)
+  vueltoVES   Decimal      @db.Decimal(14, 2) @default(0)
+  creadoEn    DateTime     @default(now())
+  lineas      CobroLinea[]
+
+  @@index([ordenId])
+}
+
+model CobroLinea {
+  id      String @id @default(cuid())
+  cobroId String
+  cobro   Cobro  @relation(fields: [cobroId], references: [id], onDelete: Cascade)
+  metodo  String
+  moneda  String
+  monto   Decimal @db.Decimal(14, 2)
+
+  @@index([cobroId])
+}
+
+model MovimientoCaja {
+  id       String   @id @default(cuid())
+  fecha    DateTime @db.Date
+  usuario  String
+  moneda   String
+  monto    Decimal  @db.Decimal(14, 2)
+  concepto String
+  cobroId  String?
+  creadoEn DateTime @default(now())
+
+  @@index([fecha, usuario])
 }
 
 model CajaDiaria {
