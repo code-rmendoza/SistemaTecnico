@@ -16,7 +16,9 @@ export default function ClientesPage() {
   return (
     <main className="mx-auto max-w-2xl p-6">
       <h1 className="text-xl font-bold">Clientes (demo local hasta migrate)</h1>
+      <label className="sr-only" htmlFor="buscar-clientes">Buscar clientes</label>
       <input
+        id="buscar-clientes"
         className="mt-3 w-full rounded border p-2"
         placeholder="Buscar por nombre, cédula o teléfono"
         value={q}

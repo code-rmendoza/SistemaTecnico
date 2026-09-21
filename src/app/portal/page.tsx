@@ -45,8 +45,10 @@ export default function PortalPage() {
       <h1 className="text-xl font-bold">Consultar estado</h1>
       <p className="mt-1 text-xs opacity-70">Ingresa código OT + cédula o teléfono.</p>
       <form onSubmit={buscar} className="mt-4 flex flex-col gap-3">
-        <input className="w-full rounded border p-2" placeholder="OT-2026-0001" value={codigo} onChange={(e) => setCodigo(e.target.value)} required />
-        <input className="w-full rounded border p-2" placeholder="cédula o teléfono" value={identidad} onChange={(e) => setIdentidad(e.target.value)} required />
+        <label className="sr-only" htmlFor="codigo">Código de orden</label>
+        <input id="codigo" className="w-full rounded border p-2" placeholder="OT-2026-0001" value={codigo} onChange={(e) => setCodigo(e.target.value)} required />
+        <label className="sr-only" htmlFor="identidad">Cédula o teléfono</label>
+        <input id="identidad" className="w-full rounded border p-2" placeholder="cédula o teléfono" value={identidad} onChange={(e) => setIdentidad(e.target.value)} required />
         <button className="rounded bg-black p-2 text-white disabled:opacity-50" disabled={loading}>
           {loading ? "Buscando…" : "Consultar"}
         </button>

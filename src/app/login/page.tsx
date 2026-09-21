@@ -33,7 +33,9 @@ export default function LoginPage() {
       <h1 className="text-xl font-bold">Iniciar sesión</h1>
       <p className="mt-1 text-xs opacity-70">Demo v1: admin@taller.ve / recepcion@taller.ve / tecnico@taller.ve / cliente@taller.ve — clave demo1234</p>
       <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
+        <label className="sr-only" htmlFor="email">Email</label>
         <input
+          id="email"
           className="rounded border p-2"
           type="email"
           placeholder="email"
@@ -41,7 +43,9 @@ export default function LoginPage() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
+        <label className="sr-only" htmlFor="clave">Clave</label>
         <input
+          id="clave"
           className="rounded border p-2"
           type="password"
           placeholder="clave"
