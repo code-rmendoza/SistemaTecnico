@@ -1,0 +1,10 @@
+{
+  "name": "Sistema Técnico",
+  "short_name": "STecnico",
+  "lang": "es-VE",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "description": "Taller electrónica general — Venezuela"
+}

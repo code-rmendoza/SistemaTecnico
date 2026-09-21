@@ -1,0 +1,11 @@
+node_modules/
+.next/
+.env
+.env.local
+coverage/
+test-results/
+playwright-report/
+tsconfig.tsbuildinfo
+dev-*.log
+.agents/
+.claude/
