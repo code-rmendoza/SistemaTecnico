@@ -1,67 +1,103 @@
 "use client";
 
-import { useState } from "react";
-import { transicionar, type Orden } from "@/modules/orders/service";
-import { crearRepuesto } from "@/modules/inventory/service";
-import { Button, Card, EstadoBadge, Page, PageHeader } from "@/components/ui";
+import { useEffect, useState } from "react";
+import { Alert, Button, Card, EmptyState, EstadoBadge, Page, PageHeader } from "@/components/ui";
 
-const ORDENES: Orden[] = [
-  {
-    id: "ot_1",
-    codigo: "OT-2026-0002",
-    clienteId: "cli_2",
-    equipoId: "eq_2",
-    fallaDeclarada: "Pantalla rota",
-    prioridad: "NORMAL",
-    estado: "APROBADA",
-    auditoria: []
-  }
-];
+interface OrdenMovil {
+  id: string;
+  codigo: string;
+  estado: string;
+  fallaDeclarada: string;
+  prioridad: string;
+  equipo: { tipo: string; marca: string; modelo: string };
+}
 
-const STOCK = [
-  crearRepuesto({ sku: "REP-0001", nombre: "Pantalla 6.5", stock: 8, stockMinimo: 2, costoUSD: 12.5, precioUSD: 25 })
-];
+const SIGUIENTES_TECH: Record<string, string[]> = {
+  APROBADA: ["EN_REPARACION"],
+  EN_REPARACION: ["CONTROL_CALIDAD"],
+  CONTROL_CALIDAD: ["LISTA_ENTREGA", "EN_REPARACION"],
+};
 
 export default function MovilPage() {
-  const [ordenes, setOrdenes] = useState<Orden[]>(ORDENES);
+  const [ordenes, setOrdenes] = useState<OrdenMovil[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  function avanzar(id: string) {
-    setOrdenes((prev) =>
-      prev.map((o) => {
-        if (o.id !== id) return o;
-        try {
-          return transicionar(o, "EN_REPARACION", "tecnico@taller.ve");
-        } catch {
-          return o;
-        }
-      })
-    );
+  async function cargar() {
+    setLoading(true);
+    const res = await fetch("/api/movil");
+    if (res.ok) {
+      setOrdenes((await res.json()).ordenes);
+    } else {
+      setError("No se pudieron cargar las órdenes");
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  async function avanzar(id: string, accion: string) {
+    setError(null);
+    const res = await fetch(`/api/ordenes/${id}/transicion`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ a: accion }),
+    });
+    if (!res.ok) {
+      setError((await res.json().catch(() => null))?.error ?? "Transición rechazada");
+      return;
+    }
+    cargar();
   }
 
   return (
-    <Page>
-      <PageHeader title="Mi cola" sub="Vista técnico. Ruta protegida: técnico, admin. Solo muestra asignadas." />
-      <ul className="flex flex-col gap-2">
-        {ordenes.map((o) => (
-          <li key={o.id}>
-            <Card>
-              <p className="text-sm"><strong>{o.codigo}</strong> <EstadoBadge estado={o.estado} /></p>
-              <p className="text-sm text-stone-500">{o.fallaDeclarada}</p>
-              <Button variant="outline" className="mt-2" onClick={() => avanzar(o.id)}>
-                Pasar a reparación
-              </Button>
-            </Card>
-          </li>
-        ))}
-      </ul>
-      <h2 className="mb-2 mt-5 text-sm font-bold">Stock consultable</h2>
-      <Card>
-        <ul className="text-sm">
-          {STOCK.map((r) => (
-            <li key={r.id}>{r.sku} — {r.nombre} (stock {r.stock})</li>
-          ))}
-        </ul>
-      </Card>
+    <Page wide>
+      <PageHeader title="Mi cola de trabajo" sub="Órdenes asignadas que necesitan atención." />
+      {error && <Alert>{error}</Alert>}
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-sm text-slate-500 py-8">
+          <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Cargando órdenes…
+        </div>
+      ) : ordenes.length === 0 ? (
+        <EmptyState>No hay órdenes asignadas por ahora.</EmptyState>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {ordenes.map((o) => {
+            const acciones = SIGUIENTES_TECH[o.estado] ?? [];
+            return (
+              <Card key={o.id} className="flex flex-col">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-slate-900">{o.codigo}</p>
+                    <p className="text-xs text-slate-500">{o.equipo.marca} {o.equipo.modelo}</p>
+                  </div>
+                  <EstadoBadge estado={o.estado} />
+                </div>
+                <p className="mt-2 text-sm text-slate-600 line-clamp-2">{o.fallaDeclarada}</p>
+                <div className="mt-auto pt-3 flex gap-2">
+                  {acciones.map((a) => (
+                    <Button
+                      key={a}
+                      variant={a === "EN_REPARACION" ? "primary" : "outline"}
+                      onClick={() => avanzar(o.id, a)}
+                      className="flex-1"
+                    >
+                      {a === "EN_REPARACION" ? "🔧 Reparar" : a === "CONTROL_CALIDAD" ? "✓ Control" : "→ Entregar"}
+                    </Button>
+                  ))}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </Page>
   );
 }
