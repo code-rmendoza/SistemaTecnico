@@ -139,6 +139,18 @@ model Presupuesto {
   aprobadaPor  String?
   aprobadaEn   DateTime?
   creadoEn     DateTime @default(now())
+  items        PresupuestoItem[]
+}
+
+model PresupuestoItem {
+  id            String      @id @default(cuid())
+  presupuestoId String
+  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  sku           String
+  cantidad      Int
+  precioUSD     Decimal     @db.Decimal(12, 2)
+
+  @@index([presupuestoId])
 }
 
 model TasaCambio {

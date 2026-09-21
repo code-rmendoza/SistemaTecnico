@@ -16,6 +16,7 @@ interface Orden {
     totalUSDRef: number;
     totalVES: number;
     aprobada: boolean;
+    items?: { sku: string; cantidad: number; precioUSD: number }[];
   } | null;
 }
 
@@ -34,6 +35,10 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
   const [error, setError] = useState<string | null>(null);
   const [manoObra, setManoObra] = useState("20");
   const [tasa, setTasa] = useState("40");
+  const [repuestos, setRepuestos] = useState<{ sku: string; cantidad: number; precioUSD: number }[]>([]);
+  const [sku, setSku] = useState("");
+  const [cant, setCant] = useState("1");
+  const [precio, setPrecio] = useState("");
 
   async function cargar() {
     const res = await fetch(`/api/ordenes/${params.id}`);
@@ -71,7 +76,7 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         manoObraUSD: Number(manoObra),
-        repuestos: [],
+        repuestos,
         tasaRef: Number(tasa),
         validezDias: 7
       })
@@ -116,6 +121,13 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
         {orden.presupuesto ? (
           <div className="mt-1 text-sm">
             <p>Mano de obra: {String(orden.presupuesto.manoObraUSD)} USD · Tasa {String(orden.presupuesto.tasaRef)}</p>
+            {(orden.presupuesto.items ?? []).length > 0 && (
+              <ul className="list-disc pl-5">
+                {(orden.presupuesto.items ?? []).map((r, i) => (
+                  <li key={i}>{r.cantidad}× {r.sku} @ {String(r.precioUSD)} USD</li>
+                ))}
+              </ul>
+            )}
             <p><strong>Total: {String(orden.presupuesto.totalUSDRef)} USD = {String(orden.presupuesto.totalVES)} Bs</strong></p>
             <p>Estado: {orden.presupuesto.aprobada ? "APROBADO" : "pendiente de aprobación"}</p>
             {!orden.presupuesto.aprobada && orden.estado === "PRESUPUESTADA" && (
@@ -125,11 +137,41 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
             )}
           </div>
         ) : (
-          <form onSubmit={presupuestar} className="mt-2 flex gap-2">
-            <label className="sr-only" htmlFor="mo">Mano de obra USD</label>
-            <input id="mo" className="w-32 rounded border p-2" value={manoObra} onChange={(e) => setManoObra(e.target.value)} placeholder="Mano obra USD" inputMode="decimal" />
-            <label className="sr-only" htmlFor="tasa">Tasa</label>
-            <input id="tasa" className="w-24 rounded border p-2" value={tasa} onChange={(e) => setTasa(e.target.value)} placeholder="Tasa" inputMode="decimal" />
+          <form onSubmit={presupuestar} className="mt-2 flex flex-col gap-2">
+            <div className="flex gap-2">
+              <label className="sr-only" htmlFor="mo">Mano de obra USD</label>
+              <input id="mo" className="w-32 rounded border p-2" value={manoObra} onChange={(e) => setManoObra(e.target.value)} placeholder="Mano obra USD" inputMode="decimal" />
+              <label className="sr-only" htmlFor="tasa">Tasa</label>
+              <input id="tasa" className="w-24 rounded border p-2" value={tasa} onChange={(e) => setTasa(e.target.value)} placeholder="Tasa" inputMode="decimal" />
+            </div>
+            <div className="flex gap-2">
+              <label className="sr-only" htmlFor="sku">SKU repuesto</label>
+              <input id="sku" className="rounded border p-2" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU" />
+              <label className="sr-only" htmlFor="cant">Cantidad</label>
+              <input id="cant" className="w-20 rounded border p-2" value={cant} onChange={(e) => setCant(e.target.value)} placeholder="Cant" inputMode="numeric" />
+              <label className="sr-only" htmlFor="precio">Precio USD</label>
+              <input id="precio" className="w-24 rounded border p-2" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="USD" inputMode="decimal" />
+              <button
+                type="button"
+                className="rounded border px-3 py-1"
+                onClick={() => {
+                  if (!sku || !precio) return;
+                  setRepuestos((r) => [...r, { sku, cantidad: Number(cant) || 1, precioUSD: Number(precio) }]);
+                  setSku("");
+                  setCant("1");
+                  setPrecio("");
+                }}
+              >
+                +
+              </button>
+            </div>
+            {repuestos.length > 0 && (
+              <ul className="text-sm">
+                {repuestos.map((r, i) => (
+                  <li key={i}>{r.cantidad}× {r.sku} @ {r.precioUSD} USD</li>
+                ))}
+              </ul>
+            )}
             <button className="rounded bg-black px-3 py-1 text-white">Presupuestar</button>
           </form>
         )}
