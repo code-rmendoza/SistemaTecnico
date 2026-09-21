@@ -30,14 +30,32 @@ async function main() {
     }
   });
 
-  await prisma.equipo.create({
-    data: {
+  const equipo =
+    (await prisma.equipo.findFirst({
+      where: { clienteId: cliente.id, serieImei: "356000000000000" }
+    })) ??
+    (await prisma.equipo.create({
+      data: {
+        clienteId: cliente.id,
+        tipo: "celular",
+        marca: "Demo",
+        modelo: "X1",
+        serieImei: "356000000000000",
+        accesorios: "Sin accesorios"
+      }
+    }));
+
+  await prisma.orden.upsert({
+    where: { codigo: "OT-2026-0001" },
+    update: {},
+    create: {
+      codigo: "OT-2026-0001",
       clienteId: cliente.id,
-      tipo: "celular",
-      marca: "Demo",
-      modelo: "X1",
-      serieImei: "356000000000000",
-      accesorios: "Sin accesorios"
+      equipoId: equipo.id,
+      estado: "EN_REPARACION",
+      fallaDeclarada: "No enciende (demo)",
+      prioridad: "NORMAL",
+      garantiaDias: 30
     }
   });
 
