@@ -9,7 +9,8 @@ async function main() {
   for (const u of [
     { email: "admin@taller.ve", rol: "admin" as const, nombre: "Admin" },
     { email: "recepcion@taller.ve", rol: "recepcion" as const, nombre: "Recepción" },
-    { email: "tecnico@taller.ve", rol: "tecnico" as const, nombre: "Técnico" }
+    { email: "tecnico@taller.ve", rol: "tecnico" as const, nombre: "Técnico" },
+    { email: "cliente@taller.ve", rol: "cliente" as const, nombre: "Cliente Demo" }
   ]) {
     await prisma.usuario.upsert({
       where: { email: u.email },
