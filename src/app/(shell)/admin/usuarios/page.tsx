@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, Field, Notice, Page, PageHeader, inputCls } from "@/components/ui";
+import { Alert, Button, Card, EmptyState, Field, Notice, Page, PageHeader, inputCls } from "@/components/ui";
+import { cn } from "@/components/cn";
 
 interface Usuario {
   id: string;
@@ -11,6 +12,13 @@ interface Usuario {
 }
 
 const ROLES = ["admin", "recepcion", "tecnico", "cliente"];
+
+const ROL_COLORS: Record<string, string> = {
+  admin: "bg-purple-50 text-purple-700 ring-purple-200",
+  recepcion: "bg-sky-50 text-sky-700 ring-sky-200",
+  tecnico: "bg-amber-50 text-amber-700 ring-amber-200",
+  cliente: "bg-slate-100 text-slate-600 ring-slate-200",
+};
 
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -88,18 +96,18 @@ export default function UsuariosPage() {
 
   return (
     <Page wide>
-      <PageHeader title="Usuarios" sub="Solo admin. Crea cuentas, cambia roles y resetea claves." />
+      <PageHeader title="Usuarios" sub={`${usuarios.length} cuentas registradas`} />
       {error && <Alert>{error}</Alert>}
       {msg && <Notice>{msg}</Notice>}
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-2 text-sm font-bold">Nuevo usuario</h2>
-          <form onSubmit={crear} className="flex flex-col gap-2">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">Crear usuario</h2>
+          <form onSubmit={crear} className="flex flex-col gap-3">
             <Field id="email" label="Email">
               <input id="email" className={inputCls} type="email" placeholder="usuario@taller.ve" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </Field>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <Field id="rol" label="Rol">
                 <select id="rol" className={inputCls} value={rol} onChange={(e) => setRol(e.target.value)}>
                   {ROLES.map((r) => (
@@ -108,57 +116,75 @@ export default function UsuariosPage() {
                 </select>
               </Field>
               <Field id="nombre" label="Nombre">
-                <input id="nombre" className={inputCls} placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required minLength={2} />
+                <input id="nombre" className={inputCls} placeholder="Nombre completo" value={nombre} onChange={(e) => setNombre(e.target.value)} required minLength={2} />
               </Field>
             </div>
             <Field id="password" label="Clave inicial (mín. 8)">
-              <input id="password" className={inputCls} type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+              <input id="password" className={inputCls} type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
             </Field>
             <Button>Crear usuario</Button>
           </form>
         </Card>
 
         <Card>
-          <h2 className="mb-2 text-sm font-bold">Cuentas ({usuarios.length})</h2>
-          <ul className="flex flex-col gap-2">
-            {usuarios.map((u) => (
-              <li key={u.id} className="rounded-lg border border-stone-200 p-2 text-sm">
-                <p><strong>{u.nombre}</strong> <span className="text-stone-500">· {u.email}</span></p>
-                <div className="mt-1 flex items-center gap-2">
-                  <label className="sr-only" htmlFor={`rol-${u.id}`}>Rol de {u.email}</label>
-                  <select
-                    id={`rol-${u.id}`}
-                    className="rounded-lg border border-stone-300 px-2 py-1 text-sm"
-                    value={u.rol}
-                    onChange={(e) => cambiarRol(u.id, e.target.value)}
-                  >
-                    {ROLES.map((r) => (
-                      <option key={r} value={r}>{r}</option>
-                    ))}
-                  </select>
-                  <button className="text-emerald-700 underline" onClick={() => setResetId(u.id)}>
-                    reset clave
-                  </button>
-                </div>
-                {resetId === u.id && (
-                  <form onSubmit={resetClave} className="mt-2 flex gap-2">
-                    <label className="sr-only" htmlFor="nueva">Nueva clave</label>
-                    <input
-                      id="nueva"
-                      className={inputCls}
-                      type="password"
-                      placeholder="Nueva clave (mín. 8)"
-                      value={nuevaClave}
-                      onChange={(e) => setNuevaClave(e.target.value)}
-                      required
-                      minLength={8}
-                    />
-                    <Button>Guardar</Button>
-                  </form>
-                )}
-              </li>
-            ))}
-          </ul>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">Cuentas</h2>
+          {usuarios.length === 0 ? (
+            <EmptyState>No hay usuarios registrados.</EmptyState>
+          ) : (
+            <div className="rounded-xl border border-slate-200/60 overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3">Nombre</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Rol</th>
+                    <th className="px-4 py-3 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {usuarios.map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-slate-900">{u.nombre}</td>
+                      <td className="px-4 py-3 text-slate-500">{u.email}</td>
+                      <td className="px-4 py-3">
+                        <select
+                          className={cn("rounded-lg border-0 px-2 py-1 text-xs font-semibold ring-1 ring-inset", ROL_COLORS[u.rol] ?? "bg-slate-100 text-slate-600 ring-slate-200")}
+                          value={u.rol}
+                          onChange={(e) => cambiarRol(u.id, e.target.value)}
+                        >
+                          {ROLES.map((r) => (
+                            <option key={r} value={r}>{r}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {resetId === u.id ? (
+                          <form onSubmit={resetClave} className="flex items-center gap-2 justify-end">
+                            <input
+                              className={cn(inputCls, "w-40")}
+                              type="password"
+                              placeholder="Nueva clave"
+                              value={nuevaClave}
+                              onChange={(e) => setNuevaClave(e.target.value)}
+                              required
+                              minLength={8}
+                              autoFocus
+                            />
+                            <Button type="submit" className="py-1 px-2 text-xs">OK</Button>
+                            <button type="button" onClick={() => { setResetId(null); setNuevaClave(""); }} className="text-xs text-slate-400 hover:text-slate-600">✕</button>
+                          </form>
+                        ) : (
+                          <button onClick={() => setResetId(u.id)} className="text-xs font-medium text-emerald-700 hover:text-emerald-800 underline">
+                            Reset clave
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       </div>
     </Page>

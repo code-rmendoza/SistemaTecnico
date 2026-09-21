@@ -7,9 +7,9 @@ test("orden completa: crear → diagnosticar → presupuestar → aprobar → re
 }) => {
   // 1. Login recepción
   await page.goto("/login");
-  await page.getByPlaceholder("email").fill("recepcion@taller.ve");
-  await page.getByPlaceholder("clave").fill("demo1234");
-  await page.getByRole("button", { name: "Entrar" }).click();
+  await page.getByPlaceholder("tu@taller.ve").fill("recepcion@taller.ve");
+  await page.getByPlaceholder("••••••••").fill("demo1234");
+  await page.getByRole("button", { name: "Iniciar sesión" }).click();
   await expect(page).toHaveURL(/ordenes/);
 
   // 2. Órdenes visibles (demo)
