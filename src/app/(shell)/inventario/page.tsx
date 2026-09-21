@@ -1,8 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Card, EmptyState, Field, Page, PageHeader, inputCls } from "@/components/ui";
+import { Button, Card, EmptyState, Field, Page, PageHeader, inputCls } from "@/components/ui";
+import { SkeletonTable } from "@/components/skeleton";
+import { Pagination } from "@/components/pagination";
+import { useToast } from "@/components/toast";
 import { cn } from "@/components/cn";
+
+const PER_PAGE = 15;
 
 interface Repuesto {
   id: string;
@@ -14,6 +19,7 @@ interface Repuesto {
 }
 
 export default function InventarioPage() {
+  const { toast } = useToast();
   const [repuestos, setRepuestos] = useState<Repuesto[]>([]);
   const [sku, setSku] = useState("");
   const [nombre, setNombre] = useState("");
@@ -24,10 +30,14 @@ export default function InventarioPage() {
   const [refMotivo, setRefMotivo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   async function cargar() {
+    setLoading(true);
     const res = await fetch("/api/repuestos");
     if (res.ok) setRepuestos((await res.json()).repuestos);
+    setLoading(false);
   }
 
   useEffect(() => {
@@ -43,12 +53,15 @@ export default function InventarioPage() {
       body: JSON.stringify({ sku, nombre, stock: Number(stock), stockMinimo: 0, costoUSD: 0, precioUSD: 0 })
     });
     if (!res.ok) {
-      setError((await res.json().catch(() => null))?.error ?? "No se pudo crear");
+      const msg = (await res.json().catch(() => null))?.error ?? "No se pudo crear";
+      setError(msg);
+      toast(msg, "error");
       return;
     }
     setSku("");
     setNombre("");
     setStock("0");
+    toast("Repuesto creado", "success");
     cargar();
   }
 
@@ -66,11 +79,14 @@ export default function InventarioPage() {
       })
     });
     if (!res.ok) {
-      setError((await res.json().catch(() => null))?.error ?? "Movimiento rechazado");
+      const msg = (await res.json().catch(() => null))?.error ?? "Movimiento rechazado";
+      setError(msg);
+      toast(msg, "error");
       return;
     }
     setCantidad("1");
     setRefMotivo("");
+    toast("Movimiento registrado", "success");
     cargar();
   }
 
@@ -79,11 +95,19 @@ export default function InventarioPage() {
       r.sku.toLowerCase().includes(busqueda.toLowerCase()) ||
       r.nombre.toLowerCase().includes(busqueda.toLowerCase())
   );
+  const paginados = filtrados.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
   return (
     <Page wide>
       <PageHeader title="Inventario" sub={`${repuestos.length} repuestos registrados`} />
-      {error && <Alert>{error}</Alert>}
+      {error && (
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <svg className="h-5 w-5 shrink-0 text-red-500 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+          </svg>
+          <span>{error}</span>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
@@ -149,46 +173,51 @@ export default function InventarioPage() {
               className="input-modern pl-9 w-64"
               placeholder="Buscar por SKU o nombre…"
               value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              onChange={(e) => { setBusqueda(e.target.value); setPage(1); }}
             />
           </div>
         </div>
 
-        {filtrados.length === 0 ? (
+        {loading ? (
+          <SkeletonTable rows={5} cols={6} />
+        ) : filtrados.length === 0 ? (
           <EmptyState>{repuestos.length === 0 ? "No hay repuestos registrados." : "No se encontraron resultados."}</EmptyState>
         ) : (
-          <div className="rounded-xl border border-slate-200/60 bg-white shadow-card overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                <tr>
-                  <th className="px-4 py-3">SKU</th>
-                  <th className="px-4 py-3">Nombre</th>
-                  <th className="px-4 py-3 text-right">Stock</th>
-                  <th className="px-4 py-3 text-right">Mínimo</th>
-                  <th className="px-4 py-3 text-right">Precio USD</th>
-                  <th className="px-4 py-3 text-center">Estado</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filtrados.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-3 font-mono font-medium text-slate-900">{r.sku}</td>
-                    <td className="px-4 py-3 text-slate-700">{r.nombre}</td>
-                    <td className={cn("px-4 py-3 text-right font-semibold", r.stock <= r.stockMinimo ? "text-red-600" : "text-slate-900")}>{r.stock}</td>
-                    <td className="px-4 py-3 text-right text-slate-500">{r.stockMinimo}</td>
-                    <td className="px-4 py-3 text-right text-slate-700">{Number(r.precioUSD) > 0 ? `${String(r.precioUSD)} USD` : "—"}</td>
-                    <td className="px-4 py-3 text-center">
-                      {r.stock <= r.stockMinimo ? (
-                        <span className="badge-pill bg-red-50 text-red-700 ring-1 ring-red-200">Bajo</span>
-                      ) : (
-                        <span className="badge-pill bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">OK</span>
-                      )}
-                    </td>
+          <>
+            <div className="rounded-xl border border-slate-200/60 bg-white shadow-card overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <tr>
+                    <th className="px-4 py-3">SKU</th>
+                    <th className="px-4 py-3">Nombre</th>
+                    <th className="px-4 py-3 text-right">Stock</th>
+                    <th className="px-4 py-3 text-right">Mínimo</th>
+                    <th className="px-4 py-3 text-right">Precio USD</th>
+                    <th className="px-4 py-3 text-center">Estado</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {paginados.map((r) => (
+                    <tr key={r.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-4 py-3 font-mono font-medium text-slate-900">{r.sku}</td>
+                      <td className="px-4 py-3 text-slate-700">{r.nombre}</td>
+                      <td className={cn("px-4 py-3 text-right font-semibold", r.stock <= r.stockMinimo ? "text-red-600" : "text-slate-900")}>{r.stock}</td>
+                      <td className="px-4 py-3 text-right text-slate-500">{r.stockMinimo}</td>
+                      <td className="px-4 py-3 text-right text-slate-700">{Number(r.precioUSD) > 0 ? `${String(r.precioUSD)} USD` : "—"}</td>
+                      <td className="px-4 py-3 text-center">
+                        {r.stock <= r.stockMinimo ? (
+                          <span className="badge-pill bg-red-50 text-red-700 ring-1 ring-red-200">Bajo</span>
+                        ) : (
+                          <span className="badge-pill bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">OK</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination page={page} total={filtrados.length} perPage={PER_PAGE} onPageChange={setPage} />
+          </>
         )}
       </div>
     </Page>

@@ -13,7 +13,9 @@ const ROLE_LABELS: Record<Role, string> = {
 export function TopBar({ email, rol }: { email: string; rol: Role }) {
   return (
     <div className="topbar">
-      <div className="ml-auto flex items-center gap-4">
+      {/* Spacer for hamburger on mobile */}
+      <div className="w-9 md:hidden" />
+      <div className="ml-auto flex items-center gap-3">
         <div className="text-right hidden sm:block">
           <p className="text-sm font-medium text-slate-900 truncate max-w-[200px]">{email}</p>
           <p className="text-xs text-slate-500">{ROLE_LABELS[rol]}</p>

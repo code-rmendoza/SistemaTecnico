@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "./cn";
 import type { Role } from "@/lib/auth";
@@ -29,57 +29,111 @@ const NAV_ADMIN: NavItem[] = [
 export function Sidebar({ userRole }: { userRole: Role }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const visibleMain = NAV_ITEMS.filter((i) => i.roles.includes(userRole));
   const visibleAdmin = NAV_ADMIN.filter((i) => i.roles.includes(userRole));
 
+  // Cerrar sidebar móvil al cambiar de ruta
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Cerrar con Escape
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileOpen(false);
+    }
+    if (mobileOpen) {
+      document.addEventListener("keydown", handleKey);
+      return () => document.removeEventListener("keydown", handleKey);
+    }
+  }, [mobileOpen]);
+
   return (
-    <aside
-      className={cn(
-        "fixed top-0 left-0 z-40 flex h-screen flex-col border-r border-slate-800 bg-slate-900 transition-all duration-300",
-        collapsed ? "w-[var(--sidebar-collapsed)]" : "w-[var(--sidebar-width)]"
-      )}
-    >
-      {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-slate-800 px-4">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-sm">
-          ST
-        </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <p className="text-sm font-bold text-white tracking-tight truncate">Sistema Técnico</p>
-            <p className="text-[11px] text-slate-500 truncate">Taller Electrónica</p>
-          </div>
-        )}
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {visibleMain.map((item) => (
-          <SidebarLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
-        ))}
-
-        {visibleAdmin.length > 0 && (
-          <>
-            <div className="my-3 border-t border-slate-800" />
-            {visibleAdmin.map((item) => (
-              <SidebarLink key={item.href} item={item} pathname={pathname} collapsed={collapsed} />
-            ))}
-          </>
-        )}
-      </nav>
-
-      {/* Collapse toggle */}
+    <>
+      {/* Hamburger - solo visible en mobile */}
       <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex items-center justify-center border-t border-slate-800 py-3 text-slate-500 hover:text-white transition-colors"
-        title={collapsed ? "Expandir" : "Colapsar"}
+        onClick={() => setMobileOpen(true)}
+        className="fixed top-3.5 left-3 z-50 flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white shadow-lg md:hidden"
+        aria-label="Abrir menú"
       >
-        <svg className={cn("h-5 w-5 transition-transform", collapsed && "rotate-180")} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
         </svg>
       </button>
-    </aside>
+
+      {/* Overlay - solo mobile */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed top-0 left-0 z-40 flex h-screen flex-col border-r border-slate-800 bg-slate-900 transition-all duration-300",
+          // Desktop: always visible, toggle width
+          "hidden md:flex",
+          collapsed ? "md:w-[var(--sidebar-collapsed)]" : "md:w-[var(--sidebar-width)]",
+          // Mobile: slide in/out
+          mobileOpen && "!flex w-[var(--sidebar-width)]"
+        )}
+      >
+        {/* Logo */}
+        <div className="flex h-16 items-center gap-3 border-b border-slate-800 px-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-sm">
+            ST
+          </div>
+          {(!collapsed || mobileOpen) && (
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold text-white tracking-tight truncate">Sistema Técnico</p>
+              <p className="text-[11px] text-slate-500 truncate">Taller Electrónica</p>
+            </div>
+          )}
+          {/* Close button - mobile only */}
+          {mobileOpen && (
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="ml-auto text-slate-500 hover:text-white md:hidden"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          {visibleMain.map((item) => (
+            <SidebarLink key={item.href} item={item} pathname={pathname} collapsed={collapsed && !mobileOpen} />
+          ))}
+
+          {visibleAdmin.length > 0 && (
+            <>
+              <div className="my-3 border-t border-slate-800" />
+              {visibleAdmin.map((item) => (
+                <SidebarLink key={item.href} item={item} pathname={pathname} collapsed={collapsed && !mobileOpen} />
+              ))}
+            </>
+          )}
+        </nav>
+
+        {/* Collapse toggle - desktop only */}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="hidden md:flex items-center justify-center border-t border-slate-800 py-3 text-slate-500 hover:text-white transition-colors"
+          title={collapsed ? "Expandir" : "Colapsar"}
+        >
+          <svg className={cn("h-5 w-5 transition-transform", collapsed && "rotate-180")} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+          </svg>
+        </button>
+      </aside>
+    </>
   );
 }
 
