@@ -31,7 +31,7 @@ export default function LoginPage() {
 
   return (
     <Page>
-      <PageHeader title="Iniciar sesión" sub="Demo v1: admin@taller.ve / recepcion@taller.ve / tecnico@taller.ve / cliente@taller.ve — clave demo1234" />
+      <PageHeader title="Iniciar sesión" sub="Usa tu cuenta del taller" />
       <Card>
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
           <Field id="email" label="Email">

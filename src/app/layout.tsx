@@ -1,4 +1,5 @@
 import "./globals.css";
+import { LogoutButton } from "@/components/logout-button";
 
 export const metadata = {
   title: "Sistema Técnico",
@@ -32,9 +33,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </a>
               ))}
             </nav>
-            <a href="/login" className="ml-auto text-sm text-slate-300 hover:text-white">
-              Entrar
-            </a>
+            <div className="ml-auto flex items-center gap-4">
+              <a href="/login" className="text-sm text-slate-300 hover:text-white">
+                Entrar
+              </a>
+              <LogoutButton />
+            </div>
           </div>
         </header>
         {children}
