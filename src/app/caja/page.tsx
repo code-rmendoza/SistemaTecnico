@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Alert, Button, Card, Field, Notice, Page, PageHeader, inputCls } from "@/components/ui";
 
 interface OrdenCobro {
   id: string;
@@ -10,7 +11,7 @@ interface OrdenCobro {
 const METODOS = ["EFECTIVO_VES", "EFECTIVO_USD", "PAGO_MOVIL", "TRANSFERENCIA_VES", "TRANSFERENCIA_USD", "TARJETA"];
 
 export default function CajaPage() {
-  const [tasa, setTasa] = useState<{ valorVESporUSD: number; fecha: string } | null>(null);
+  const [tasaValor, setTasaValor] = useState<number | null>(null);
   const [nuevaTasa, setNuevaTasa] = useState("");
   const [codigo, setCodigo] = useState("");
   const [orden, setOrden] = useState<(OrdenCobro & { saldoVES: number }) | null>(null);
@@ -27,7 +28,7 @@ export default function CajaPage() {
     const [rt, rc] = await Promise.all([fetch("/api/tasa"), fetch("/api/caja")]);
     if (rt.ok) {
       const d = await rt.json();
-      if (d.tasa) setTasa({ valorVESporUSD: Number(d.tasa.valorVESporUSD), fecha: String(d.tasa.fecha).slice(0, 10) });
+      if (d.tasa) setTasaValor(Number(d.tasa.valorVESPorUSD));
     }
     if (rc.ok) {
       const d = await rc.json();
@@ -45,7 +46,7 @@ export default function CajaPage() {
     const res = await fetch("/api/tasa", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ valorVESporUSD: Number(nuevaTasa) })
+      body: JSON.stringify({ valorVESPorUSD: Number(nuevaTasa) })
     });
     if (!res.ok) {
       setError("Solo admin puede fijar la tasa");
@@ -97,7 +98,7 @@ export default function CajaPage() {
   async function cerrar(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!tasa) {
+    if (tasaValor === null) {
       setError("Sin tasa del día");
       return;
     }
@@ -107,7 +108,7 @@ export default function CajaPage() {
       body: JSON.stringify({
         contadoVES: Number(contadoVES),
         contadoUSD: Number(contadoUSD),
-        tasaCierre: tasa.valorVESporUSD
+        tasaCierre: tasaValor
       })
     });
     const d = await res.json().catch(() => null);
@@ -120,57 +121,66 @@ export default function CajaPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-xl font-bold">Caja</h1>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-      {msg && <p className="mt-2 text-sm text-green-700">{msg}</p>}
+    <Page wide>
+      <PageHeader title="Caja" sub={resumen ? `Esperado hoy: ${resumen.esperadoVES} Bs + ${resumen.esperadoUSD} USD` : undefined} />
+      {error && <Alert>{error}</Alert>}
+      {msg && <Notice>{msg}</Notice>}
 
-      <section className="mt-3 rounded border p-3">
-        <h2 className="text-sm font-bold">Tasa del día{tasa ? `: ${tasa.valorVESporUSD} Bs/USD` : " (sin fijar)"}</h2>
-        <form onSubmit={guardarTasa} className="mt-2 flex gap-2">
-          <label className="sr-only" htmlFor="tasa">Nueva tasa</label>
-          <input id="tasa" className="w-32 rounded border p-2" value={nuevaTasa} onChange={(e) => setNuevaTasa(e.target.value)} placeholder="Bs por USD" inputMode="decimal" />
-          <button className="rounded bg-black px-3 py-1 text-white">Fijar (admin)</button>
-        </form>
-      </section>
-
-      <section className="mt-3 rounded border p-3">
-        <h2 className="text-sm font-bold">Cobrar orden</h2>
-        <form onSubmit={buscarOrden} className="mt-2 flex gap-2">
-          <label className="sr-only" htmlFor="cod">Código OT</label>
-          <input id="cod" className="rounded border p-2" value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="OT-2026-0001" />
-          <button className="rounded border px-3 py-1">Buscar</button>
-        </form>
-        {orden && (
-          <form onSubmit={cobrar} className="mt-2 flex flex-col gap-2">
-            <p className="text-sm"><strong>{orden.codigo}</strong> — saldo {orden.saldoVES} Bs</p>
-            <div className="flex gap-2">
-              <label className="sr-only" htmlFor="met">Método</label>
-              <select id="met" className="rounded border p-2" value={metodo} onChange={(e) => setMetodo(e.target.value)}>
-                {METODOS.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-              <label className="sr-only" htmlFor="monto">Monto</label>
-              <input id="monto" className="rounded border p-2" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="Monto" inputMode="decimal" required />
-            </div>
-            <button className="rounded bg-black p-2 text-white">Cobrar</button>
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card>
+          <h2 className="mb-2 text-sm font-bold">Tasa del día{tasaValor !== null ? `: ${tasaValor} Bs/USD` : " (sin fijar)"}</h2>
+          <form onSubmit={guardarTasa} className="flex flex-col gap-2">
+            <Field id="tasa" label="Nueva tasa (solo admin)">
+              <input id="tasa" className={inputCls} value={nuevaTasa} onChange={(e) => setNuevaTasa(e.target.value)} placeholder="Bs por USD" inputMode="decimal" />
+            </Field>
+            <Button>Fijar (admin)</Button>
           </form>
-        )}
-      </section>
+        </Card>
 
-      <section className="mt-3 rounded border p-3">
-        <h2 className="text-sm font-bold">Cierre del día</h2>
-        {resumen && <p className="text-sm">Esperado: {resumen.esperadoVES} Bs + {resumen.esperadoUSD} USD</p>}
-        <form onSubmit={cerrar} className="mt-2 flex gap-2">
-          <label className="sr-only" htmlFor="cves">Contado Bs</label>
-          <input id="cves" className="w-32 rounded border p-2" value={contadoVES} onChange={(e) => setContadoVES(e.target.value)} placeholder="Contado Bs" inputMode="decimal" required />
-          <label className="sr-only" htmlFor="cusd">Contado USD</label>
-          <input id="cusd" className="w-32 rounded border p-2" value={contadoUSD} onChange={(e) => setContadoUSD(e.target.value)} placeholder="Contado USD" inputMode="decimal" required />
-          <button className="rounded bg-black px-3 py-1 text-white">Cerrar</button>
-        </form>
-        {cierre && <p className="mt-1 text-sm">Diferencia: {cierre.diferenciaVES} Bs, {cierre.diferenciaUSD} USD</p>}
-      </section>
-    </main>
+        <Card>
+          <h2 className="mb-2 text-sm font-bold">Cobrar orden</h2>
+          <form onSubmit={buscarOrden} className="flex gap-2">
+            <Field id="cod" label="Código OT">
+              <input id="cod" className={inputCls} value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="OT-2026-0001" />
+            </Field>
+            <Button variant="outline" className="self-end">Buscar</Button>
+          </form>
+          {orden && (
+            <form onSubmit={cobrar} className="mt-2 flex flex-col gap-2">
+              <p className="text-sm"><strong>{orden.codigo}</strong> — saldo {orden.saldoVES} Bs</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Field id="met" label="Método">
+                  <select id="met" className={inputCls} value={metodo} onChange={(e) => setMetodo(e.target.value)}>
+                    {METODOS.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field id="monto" label="Monto">
+                  <input id="monto" className={inputCls} value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="Monto" inputMode="decimal" required />
+                </Field>
+              </div>
+              <Button>Cobrar</Button>
+            </form>
+          )}
+        </Card>
+
+        <Card>
+          <h2 className="mb-2 text-sm font-bold">Cierre del día</h2>
+          <form onSubmit={cerrar} className="flex flex-col gap-2">
+            <div className="grid grid-cols-2 gap-2">
+              <Field id="cves" label="Contado Bs">
+                <input id="cves" className={inputCls} value={contadoVES} onChange={(e) => setContadoVES(e.target.value)} placeholder="Contado Bs" inputMode="decimal" required />
+              </Field>
+              <Field id="cusd" label="Contado USD">
+                <input id="cusd" className={inputCls} value={contadoUSD} onChange={(e) => setContadoUSD(e.target.value)} placeholder="Contado USD" inputMode="decimal" required />
+              </Field>
+            </div>
+            <Button>Cerrar</Button>
+          </form>
+          {cierre && <p className="mt-2 text-sm">Diferencia: {cierre.diferenciaVES} Bs, {cierre.diferenciaUSD} USD</p>}
+        </Card>
+      </div>
+    </Page>
   );
 }

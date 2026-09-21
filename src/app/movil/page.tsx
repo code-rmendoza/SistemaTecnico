@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { transicionar, type Orden } from "@/modules/orders/service";
 import { crearRepuesto } from "@/modules/inventory/service";
+import { Button, Card, EstadoBadge, Page, PageHeader } from "@/components/ui";
 
 const ORDENES: Orden[] = [
   {
@@ -38,26 +39,29 @@ export default function MovilPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-md p-4">
-      <h1 className="text-lg font-bold">Mi cola (técnico demo)</h1>
-      <ul className="mt-3 flex flex-col gap-2">
+    <Page>
+      <PageHeader title="Mi cola" sub="Vista técnico. Ruta protegida: técnico, admin. Solo muestra asignadas." />
+      <ul className="flex flex-col gap-2">
         {ordenes.map((o) => (
-          <li key={o.id} className="rounded border p-3 text-sm">
-            <p><strong>{o.codigo}</strong> — {o.estado}</p>
-            <p className="opacity-70">{o.fallaDeclarada}</p>
-            <button className="mt-2 rounded bg-black px-3 py-1 text-white" onClick={() => avanzar(o.id)}>
-              Pasar a reparación
-            </button>
+          <li key={o.id}>
+            <Card>
+              <p className="text-sm"><strong>{o.codigo}</strong> <EstadoBadge estado={o.estado} /></p>
+              <p className="text-sm text-stone-500">{o.fallaDeclarada}</p>
+              <Button variant="outline" className="mt-2" onClick={() => avanzar(o.id)}>
+                Pasar a reparación
+              </Button>
+            </Card>
           </li>
         ))}
       </ul>
-      <h2 className="mt-5 text-sm font-bold">Stock consultable</h2>
-      <ul className="text-sm">
-        {STOCK.map((r) => (
-          <li key={r.id}>{r.sku} — {r.nombre} (stock {r.stock})</li>
-        ))}
-      </ul>
-      <p className="mt-3 text-xs opacity-70">Ruta protegida: técnico, admin. Solo muestra asignadas.</p>
-    </main>
+      <h2 className="mb-2 mt-5 text-sm font-bold">Stock consultable</h2>
+      <Card>
+        <ul className="text-sm">
+          {STOCK.map((r) => (
+            <li key={r.id}>{r.sku} — {r.nombre} (stock {r.stock})</li>
+          ))}
+        </ul>
+      </Card>
+    </Page>
   );
 }

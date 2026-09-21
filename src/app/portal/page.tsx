@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Alert, Button, Card, Field, Notice, Page, PageHeader, inputCls } from "@/components/ui";
 
 interface Resultado {
   codigo: string;
@@ -41,26 +42,29 @@ export default function PortalPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-md p-6">
-      <h1 className="text-xl font-bold">Consultar estado</h1>
-      <p className="mt-1 text-xs opacity-70">Ingresa código OT + cédula o teléfono.</p>
-      <form onSubmit={buscar} className="mt-4 flex flex-col gap-3">
-        <label className="sr-only" htmlFor="codigo">Código de orden</label>
-        <input id="codigo" className="w-full rounded border p-2" placeholder="OT-2026-0001" value={codigo} onChange={(e) => setCodigo(e.target.value)} required />
-        <label className="sr-only" htmlFor="identidad">Cédula o teléfono</label>
-        <input id="identidad" className="w-full rounded border p-2" placeholder="cédula o teléfono" value={identidad} onChange={(e) => setIdentidad(e.target.value)} required />
-        <button className="rounded bg-black p-2 text-white disabled:opacity-50" disabled={loading}>
-          {loading ? "Buscando…" : "Consultar"}
-        </button>
-      </form>
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+    <Page>
+      <PageHeader title="Consultar estado" sub="Ingresa código OT + cédula o teléfono." />
+      <Card>
+        <form onSubmit={buscar} className="flex flex-col gap-3">
+          <Field id="codigo" label="Código de orden">
+            <input id="codigo" className={inputCls} placeholder="OT-2026-0001" value={codigo} onChange={(e) => setCodigo(e.target.value)} required />
+          </Field>
+          <Field id="identidad" label="Cédula o teléfono">
+            <input id="identidad" className={inputCls} placeholder="cédula o teléfono" value={identidad} onChange={(e) => setIdentidad(e.target.value)} required />
+          </Field>
+          <Button disabled={loading}>{loading ? "Buscando…" : "Consultar"}</Button>
+        </form>
+      </Card>
+      {error && <Alert>{error}</Alert>}
       {resultado && (
-        <div className="mt-4 rounded border p-3 text-sm">
-          <p><strong>{resultado.codigo}</strong> — {resultado.estado}</p>
-          <p className="opacity-70">{resultado.falla}</p>
-          {resultado.fechaPromesa && <p className="opacity-70">Promesa: {String(resultado.fechaPromesa).slice(0, 10)}</p>}
-        </div>
+        <Card className="mt-3 border-emerald-200 bg-emerald-50">
+          <Notice>
+            <strong>{resultado.codigo}</strong> — {resultado.estado}
+          </Notice>
+          <p className="text-sm text-stone-600">{resultado.falla}</p>
+          {resultado.fechaPromesa && <p className="text-sm text-stone-500">Promesa: {String(resultado.fechaPromesa).slice(0, 10)}</p>}
+        </Card>
       )}
-    </main>
+    </Page>
   );
 }

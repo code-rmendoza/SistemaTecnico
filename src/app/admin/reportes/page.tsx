@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Card, EmptyState, Page, PageHeader } from "@/components/ui";
 
 interface Reporte {
   ingresos: { totalVES: number; cobros: number; ticketPromedioVES: number };
@@ -19,48 +20,72 @@ export default function ReportesPage() {
     });
   }, []);
 
-  if (!rep) return <main className="p-6"><p>Cargando…</p></main>;
+  if (!rep)
+    return (
+      <Page>
+        <p className="text-sm text-stone-500">Cargando…</p>
+      </Page>
+    );
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-xl font-bold">Reportes (últimos 30 días)</h1>
+    <Page wide>
+      <PageHeader title="Reportes" sub="Últimos 30 días" />
 
-      <section className="mt-3 rounded border p-3 text-sm">
-        <p><strong>Ingresos:</strong> {rep.ingresos.totalVES} Bs en {rep.ingresos.cobros} cobros</p>
-        <p><strong>Ticket promedio:</strong> {rep.ingresos.ticketPromedioVES.toFixed(2)} Bs</p>
-        <p><strong>Por cobrar:</strong> {rep.totalPorCobrarVES} Bs ({rep.cuentasPorCobrar.length} órdenes)</p>
-      </section>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Card>
+          <p className="text-xs text-stone-500">Ingresos</p>
+          <p className="text-xl font-bold">{rep.ingresos.totalVES} Bs</p>
+          <p className="text-sm text-stone-500">{rep.ingresos.cobros} cobros</p>
+        </Card>
+        <Card>
+          <p className="text-xs text-stone-500">Ticket promedio</p>
+          <p className="text-xl font-bold">{rep.ingresos.ticketPromedioVES.toFixed(2)} Bs</p>
+        </Card>
+        <Card>
+          <p className="text-xs text-stone-500">Por cobrar</p>
+          <p className="text-xl font-bold">{rep.totalPorCobrarVES} Bs</p>
+          <p className="text-sm text-stone-500">{rep.cuentasPorCobrar.length} órdenes</p>
+        </Card>
+      </div>
 
-      <section className="mt-3 rounded border p-3 text-sm">
-        <h2 className="font-bold">Por día</h2>
-        <ul>
-          {Object.entries(rep.porDia).map(([d, v]) => (
-            <li key={d}>{d}: {v.ves} Bs ({v.n} cobros)</li>
-          ))}
-        </ul>
-        {Object.keys(rep.porDia).length === 0 && <p className="opacity-60">Sin cobros en el período.</p>}
-      </section>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <Card>
+          <h2 className="mb-2 text-sm font-bold">Por día</h2>
+          {Object.keys(rep.porDia).length === 0 ? (
+            <p className="text-sm text-stone-500">Sin cobros en el período.</p>
+          ) : (
+            <ul className="text-sm">
+              {Object.entries(rep.porDia).map(([d, v]) => (
+                <li key={d}>{d}: {v.ves} Bs ({v.n} cobros)</li>
+              ))}
+            </ul>
+          )}
+        </Card>
 
-      <section className="mt-3 rounded border p-3 text-sm">
-        <h2 className="font-bold">Por método</h2>
-        <ul>
-          {Object.entries(rep.porMetodo).map(([m, v]) => (
-            <li key={m}>{m}: {v}</li>
-          ))}
-        </ul>
-      </section>
+        <Card>
+          <h2 className="mb-2 text-sm font-bold">Por método</h2>
+          <ul className="text-sm">
+            {Object.entries(rep.porMetodo).map(([m, v]) => (
+              <li key={m}>{m}: {v}</li>
+            ))}
+          </ul>
+        </Card>
+      </div>
 
-      <section className="mt-3 rounded border p-3 text-sm">
-        <h2 className="font-bold">Cuentas por cobrar</h2>
-        <ul className="divide-y">
-          {rep.cuentasPorCobrar.map((c) => (
-            <li key={c.codigo} className="py-1">
-              <strong>{c.codigo}</strong> {c.cliente} — saldo {c.saldoVES} Bs ({c.cobradoVES}/{c.totalVES})
-            </li>
-          ))}
-        </ul>
-        {rep.cuentasPorCobrar.length === 0 && <p className="opacity-60">Nada pendiente. 🎉</p>}
-      </section>
-    </main>
+      <Card className="mt-3">
+        <h2 className="mb-2 text-sm font-bold">Cuentas por cobrar</h2>
+        {rep.cuentasPorCobrar.length === 0 ? (
+          <EmptyState>Nada pendiente. 🎉</EmptyState>
+        ) : (
+          <ul className="divide-y divide-stone-100 text-sm">
+            {rep.cuentasPorCobrar.map((c) => (
+              <li key={c.codigo} className="py-1">
+                <strong>{c.codigo}</strong> {c.cliente} — saldo {c.saldoVES} Bs ({c.cobradoVES}/{c.totalVES})
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+    </Page>
   );
 }
