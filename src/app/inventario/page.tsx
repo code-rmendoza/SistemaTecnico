@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Alert, Button, Card, Field, Page, PageHeader, inputCls } from "@/components/ui";
 
 interface Repuesto {
   id: string;
@@ -79,59 +80,76 @@ export default function InventarioPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-xl font-bold">Inventario</h1>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    <Page wide>
+      <PageHeader title="Inventario" />
+      {error && <Alert>{error}</Alert>}
 
-      <form onSubmit={crear} className="mt-3 flex flex-col gap-2 rounded border p-3">
-        <h2 className="text-sm font-bold">Nuevo repuesto</h2>
-        <div className="flex gap-2">
-          <label className="sr-only" htmlFor="sku">SKU</label>
-          <input id="sku" className="w-1/3 rounded border p-2" placeholder="SKU" value={sku} onChange={(e) => setSku(e.target.value)} required minLength={3} />
-          <label className="sr-only" htmlFor="nom">Nombre</label>
-          <input id="nom" className="w-1/3 rounded border p-2" placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required minLength={2} />
-          <label className="sr-only" htmlFor="stk">Stock inicial</label>
-          <input id="stk" className="w-1/3 rounded border p-2" placeholder="Stock" value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" />
-        </div>
-        <button className="rounded bg-black p-2 text-white">Crear repuesto</button>
-      </form>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Card>
+          <h2 className="mb-2 text-sm font-bold">Nuevo repuesto</h2>
+          <form onSubmit={crear} className="flex flex-col gap-2">
+            <div className="grid grid-cols-3 gap-2">
+              <Field id="sku" label="SKU">
+                <input id="sku" className={inputCls} placeholder="SKU" value={sku} onChange={(e) => setSku(e.target.value)} required minLength={3} />
+              </Field>
+              <Field id="nom" label="Nombre">
+                <input id="nom" className={inputCls} placeholder="Nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required minLength={2} />
+              </Field>
+              <Field id="stk" label="Stock inicial">
+                <input id="stk" className={inputCls} placeholder="Stock" value={stock} onChange={(e) => setStock(e.target.value)} inputMode="numeric" />
+              </Field>
+            </div>
+            <Button>Crear repuesto</Button>
+          </form>
+        </Card>
 
-      <form onSubmit={mover} className="mt-3 flex flex-col gap-2 rounded border p-3">
-        <h2 className="text-sm font-bold">Movimiento</h2>
-        <div className="flex gap-2">
-          <label className="sr-only" htmlFor="rep">Repuesto</label>
-          <select id="rep" className="w-1/2 rounded border p-2" value={movId} onChange={(e) => setMovId(e.target.value)} required>
-            <option value="">Repuesto…</option>
-            {repuestos.map((r) => (
-              <option key={r.id} value={r.id}>{r.sku} (stock {r.stock})</option>
-            ))}
-          </select>
-          <label className="sr-only" htmlFor="tipo">Tipo</label>
-          <select id="tipo" className="rounded border p-2" value={tipo} onChange={(e) => setTipo(e.target.value)}>
-            <option>ENTRADA</option>
-            <option>SALIDA_ORDEN</option>
-            <option>AJUSTE</option>
-          </select>
-          <label className="sr-only" htmlFor="cant">Cantidad</label>
-          <input id="cant" className="w-20 rounded border p-2" value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" />
-        </div>
-        {(tipo === "SALIDA_ORDEN" || tipo === "AJUSTE") && (
-          <>
-            <label className="sr-only" htmlFor="ref">Referencia o motivo</label>
-            <input id="ref" className="rounded border p-2" placeholder={tipo === "SALIDA_ORDEN" ? "Código OT (ej. OT-2026-0001)" : "Motivo del ajuste"} value={refMotivo} onChange={(e) => setRefMotivo(e.target.value)} required />
-          </>
-        )}
-        <button className="rounded bg-black p-2 text-white">Registrar</button>
-      </form>
+        <Card>
+          <h2 className="mb-2 text-sm font-bold">Movimiento</h2>
+          <form onSubmit={mover} className="flex flex-col gap-2">
+            <Field id="rep" label="Repuesto">
+              <select id="rep" className={inputCls} value={movId} onChange={(e) => setMovId(e.target.value)} required>
+                <option value="">Repuesto…</option>
+                {repuestos.map((r) => (
+                  <option key={r.id} value={r.id}>{r.sku} (stock {r.stock})</option>
+                ))}
+              </select>
+            </Field>
+            <div className="grid grid-cols-2 gap-2">
+              <Field id="tipo" label="Tipo">
+                <select id="tipo" className={inputCls} value={tipo} onChange={(e) => setTipo(e.target.value)}>
+                  <option>ENTRADA</option>
+                  <option>SALIDA_ORDEN</option>
+                  <option>AJUSTE</option>
+                </select>
+              </Field>
+              <Field id="cant" label="Cantidad">
+                <input id="cant" className={inputCls} value={cantidad} onChange={(e) => setCantidad(e.target.value)} inputMode="numeric" />
+              </Field>
+            </div>
+            {(tipo === "SALIDA_ORDEN" || tipo === "AJUSTE") && (
+              <Field id="ref" label="Referencia o motivo">
+                <input id="ref" className={inputCls} placeholder={tipo === "SALIDA_ORDEN" ? "Código OT (ej. OT-2026-0001)" : "Motivo del ajuste"} value={refMotivo} onChange={(e) => setRefMotivo(e.target.value)} required />
+              </Field>
+            )}
+            <Button>Registrar</Button>
+          </form>
+        </Card>
+      </div>
 
-      <ul className="mt-4 divide-y">
+      <ul className="mt-3 flex flex-col gap-2">
         {repuestos.map((r) => (
-          <li key={r.id} className="py-2 text-sm">
-            <strong>{r.sku}</strong> {r.nombre} — stock {r.stock}
-            {r.stock <= r.stockMinimo && <span className="ml-2 rounded bg-red-100 px-2 py-0.5 text-red-700">¡Stock mínimo!</span>}
+          <li key={r.id}>
+            <Card>
+              <p className="text-sm">
+                <strong>{r.sku}</strong> {r.nombre} — stock {r.stock}
+                {r.stock <= r.stockMinimo && (
+                  <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">¡Stock mínimo!</span>
+                )}
+              </p>
+            </Card>
           </li>
         ))}
       </ul>
-    </main>
+    </Page>
   );
 }

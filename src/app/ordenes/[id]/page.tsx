@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Alert, Button, Card, EstadoBadge, Field, Page, inputCls } from "@/components/ui";
 
 interface Orden {
   id: string;
@@ -98,62 +99,77 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
     setOrden((await res.json()).orden);
   }
 
-  if (error && !orden) return <main className="p-6"><p className="text-red-600">{error}</p></main>;
-  if (!orden) return <main className="p-6"><p>Cargando…</p></main>;
+  if (error && !orden)
+    return (
+      <Page>
+        <Alert>{error}</Alert>
+      </Page>
+    );
+  if (!orden)
+    return (
+      <Page>
+        <p className="text-sm text-stone-500">Cargando…</p>
+      </Page>
+    );
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <a className="text-sm underline" href="/ordenes">← Órdenes</a>
-      <h1 className="mt-2 text-xl font-bold">{orden.codigo} — {orden.estado}</h1>
-      <p className="text-sm opacity-70">{orden.fallaDeclarada} · Prioridad {orden.prioridad}</p>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    <Page wide>
+      <a className="text-sm text-emerald-700 underline" href="/ordenes">← Órdenes</a>
+      <h1 className="mt-2 text-xl font-bold tracking-tight">
+        {orden.codigo} <EstadoBadge estado={orden.estado} />
+      </h1>
+      <p className="text-sm text-stone-500">{orden.fallaDeclarada} · Prioridad {orden.prioridad}</p>
+      {error && <Alert>{error}</Alert>}
 
       <div className="mt-3 flex flex-wrap gap-2">
         {(SIGUIENTES[orden.estado] ?? []).map((s) => (
-          <button key={s} className="rounded border px-3 py-1 text-sm" onClick={() => transicionar(s)}>
+          <Button key={s} variant="outline" onClick={() => transicionar(s)}>
             → {s}
-          </button>
+          </Button>
         ))}
       </div>
 
-      <section className="mt-5 rounded border p-3">
-        <h2 className="text-sm font-bold">Presupuesto</h2>
+      <Card className="mt-4">
+        <h2 className="mb-2 text-sm font-bold">Presupuesto</h2>
         {orden.presupuesto ? (
-          <div className="mt-1 text-sm">
+          <div className="text-sm">
             <p>Mano de obra: {String(orden.presupuesto.manoObraUSD)} USD · Tasa {String(orden.presupuesto.tasaRef)}</p>
             {(orden.presupuesto.items ?? []).length > 0 && (
-              <ul className="list-disc pl-5">
+              <ul className="list-disc pl-5 text-stone-600">
                 {(orden.presupuesto.items ?? []).map((r, i) => (
                   <li key={i}>{r.cantidad}× {r.sku} @ {String(r.precioUSD)} USD</li>
                 ))}
               </ul>
             )}
-            <p><strong>Total: {String(orden.presupuesto.totalUSDRef)} USD = {String(orden.presupuesto.totalVES)} Bs</strong></p>
-            <p>Estado: {orden.presupuesto.aprobada ? "APROBADO" : "pendiente de aprobación"}</p>
+            <p className="mt-1"><strong>Total: {String(orden.presupuesto.totalUSDRef)} USD = {String(orden.presupuesto.totalVES)} Bs</strong></p>
+            <p className="text-stone-500">Estado: {orden.presupuesto.aprobada ? "APROBADO" : "pendiente de aprobación"}</p>
             {!orden.presupuesto.aprobada && orden.estado === "PRESUPUESTADA" && (
-              <button className="mt-2 rounded bg-black px-3 py-1 text-white" onClick={aprobar}>
-                Aprobar
-              </button>
+              <Button className="mt-2" onClick={aprobar}>Aprobar</Button>
             )}
           </div>
         ) : (
-          <form onSubmit={presupuestar} className="mt-2 flex flex-col gap-2">
+          <form onSubmit={presupuestar} className="flex flex-col gap-2">
             <div className="flex gap-2">
-              <label className="sr-only" htmlFor="mo">Mano de obra USD</label>
-              <input id="mo" className="w-32 rounded border p-2" value={manoObra} onChange={(e) => setManoObra(e.target.value)} placeholder="Mano obra USD" inputMode="decimal" />
-              <label className="sr-only" htmlFor="tasa">Tasa</label>
-              <input id="tasa" className="w-24 rounded border p-2" value={tasa} onChange={(e) => setTasa(e.target.value)} placeholder="Tasa" inputMode="decimal" />
+              <Field id="mo" label="Mano de obra USD">
+                <input id="mo" className={inputCls} value={manoObra} onChange={(e) => setManoObra(e.target.value)} placeholder="Mano obra USD" inputMode="decimal" />
+              </Field>
+              <Field id="tasa" label="Tasa">
+                <input id="tasa" className={inputCls} value={tasa} onChange={(e) => setTasa(e.target.value)} placeholder="Tasa" inputMode="decimal" />
+              </Field>
             </div>
-            <div className="flex gap-2">
-              <label className="sr-only" htmlFor="sku">SKU repuesto</label>
-              <input id="sku" className="rounded border p-2" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU" />
-              <label className="sr-only" htmlFor="cant">Cantidad</label>
-              <input id="cant" className="w-20 rounded border p-2" value={cant} onChange={(e) => setCant(e.target.value)} placeholder="Cant" inputMode="numeric" />
-              <label className="sr-only" htmlFor="precio">Precio USD</label>
-              <input id="precio" className="w-24 rounded border p-2" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="USD" inputMode="decimal" />
-              <button
+            <div className="flex items-end gap-2">
+              <Field id="sku" label="SKU repuesto">
+                <input id="sku" className={inputCls} value={sku} onChange={(e) => setSku(e.target.value)} placeholder="SKU" />
+              </Field>
+              <Field id="cant" label="Cant">
+                <input id="cant" className={inputCls} value={cant} onChange={(e) => setCant(e.target.value)} placeholder="Cant" inputMode="numeric" />
+              </Field>
+              <Field id="precio" label="Precio USD">
+                <input id="precio" className={inputCls} value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="USD" inputMode="decimal" />
+              </Field>
+              <Button
                 type="button"
-                className="rounded border px-3 py-1"
+                variant="outline"
                 onClick={() => {
                   if (!sku || !precio) return;
                   setRepuestos((r) => [...r, { sku, cantidad: Number(cant) || 1, precioUSD: Number(precio) }]);
@@ -163,29 +179,32 @@ export default function OrdenDetalle({ params }: { params: { id: string } }) {
                 }}
               >
                 +
-              </button>
+              </Button>
             </div>
             {repuestos.length > 0 && (
-              <ul className="text-sm">
+              <ul className="text-sm text-stone-600">
                 {repuestos.map((r, i) => (
                   <li key={i}>{r.cantidad}× {r.sku} @ {r.precioUSD} USD</li>
                 ))}
               </ul>
             )}
-            <button className="rounded bg-black px-3 py-1 text-white">Presupuestar</button>
+            <Button>Presupuestar</Button>
           </form>
         )}
-      </section>
+      </Card>
 
-      <section className="mt-5">
-        <h2 className="text-sm font-bold">Historial</h2>
-        <ol className="mt-1 list-disc pl-5 text-sm">
-          {orden.historial.map((h, i) => (
-            <li key={i}>{h.de} → {h.a} · {h.usuario} · {String(h.fecha).slice(0, 16).replace("T", " ")}</li>
-          ))}
-        </ol>
-        {orden.historial.length === 0 && <p className="text-sm opacity-60">Sin movimientos.</p>}
-      </section>
-    </main>
+      <Card className="mt-4">
+        <h2 className="mb-2 text-sm font-bold">Historial</h2>
+        {orden.historial.length === 0 ? (
+          <p className="text-sm text-stone-500">Sin movimientos.</p>
+        ) : (
+          <ol className="list-disc pl-5 text-sm">
+            {orden.historial.map((h, i) => (
+              <li key={i}>{h.de} → {h.a} · {h.usuario} · {String(h.fecha).slice(0, 16).replace("T", " ")}</li>
+            ))}
+          </ol>
+        )}
+      </Card>
+    </Page>
   );
 }

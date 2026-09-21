@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, Button, Card, Field, Page, PageHeader, inputCls } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,36 +30,37 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-sm p-6">
-      <h1 className="text-xl font-bold">Iniciar sesión</h1>
-      <p className="mt-1 text-xs opacity-70">Demo v1: admin@taller.ve / recepcion@taller.ve / tecnico@taller.ve / cliente@taller.ve — clave demo1234</p>
-      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-3">
-        <label className="sr-only" htmlFor="email">Email</label>
-        <input
-          id="email"
-          className="rounded border p-2"
-          type="email"
-          placeholder="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <label className="sr-only" htmlFor="clave">Clave</label>
-        <input
-          id="clave"
-          className="rounded border p-2"
-          type="password"
-          placeholder="clave"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={6}
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button className="rounded bg-black p-2 text-white disabled:opacity-50" disabled={loading}>
-          {loading ? "Entrando…" : "Entrar"}
-        </button>
-      </form>
-    </main>
+    <Page>
+      <PageHeader title="Iniciar sesión" sub="Demo v1: admin@taller.ve / recepcion@taller.ve / tecnico@taller.ve / cliente@taller.ve — clave demo1234" />
+      <Card>
+        <form onSubmit={onSubmit} className="flex flex-col gap-3">
+          <Field id="email" label="Email">
+            <input
+              id="email"
+              className={inputCls}
+              type="email"
+              placeholder="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </Field>
+          <Field id="clave" label="Clave">
+            <input
+              id="clave"
+              className={inputCls}
+              type="password"
+              placeholder="clave"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
+          </Field>
+          {error && <Alert>{error}</Alert>}
+          <Button disabled={loading}>{loading ? "Entrando…" : "Entrar"}</Button>
+        </form>
+      </Card>
+    </Page>
   );
 }

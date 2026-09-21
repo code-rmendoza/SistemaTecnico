@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Alert, Button, Card, EmptyState, EstadoBadge, Field, Page, PageHeader, inputCls } from "@/components/ui";
 
 interface Cliente {
   id: string;
@@ -56,42 +57,55 @@ export default function OrdenesPage() {
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-6">
-      <h1 className="text-xl font-bold">Órdenes</h1>
+    <Page wide>
+      <PageHeader title="Órdenes" />
+      <Card>
+        <h2 className="mb-2 text-sm font-bold">Nueva orden</h2>
+        <form onSubmit={crear} className="flex flex-col gap-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Field id="cli" label="Cliente">
+              <select id="cli" className={inputCls} value={clienteId} onChange={(e) => { setClienteId(e.target.value); setEquipoId(""); }} required>
+                <option value="">Cliente…</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.nombre} — {c.cedulaRif}</option>
+                ))}
+              </select>
+            </Field>
+            <Field id="eq" label="Equipo">
+              <select id="eq" className={inputCls} value={equipoId} onChange={(e) => setEquipoId(e.target.value)} required>
+                <option value="">Equipo…</option>
+                {equipos.map((q) => (
+                  <option key={q.id} value={q.id}>{q.marca} {q.modelo}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <Field id="falla" label="Falla declarada">
+            <input id="falla" className={inputCls} placeholder="Falla declarada" value={falla} onChange={(e) => setFalla(e.target.value)} required minLength={3} />
+          </Field>
+          {error && <Alert>{error}</Alert>}
+          <Button>Crear OT</Button>
+        </form>
+      </Card>
 
-      <form onSubmit={crear} className="mt-4 flex flex-col gap-2 rounded border p-3">
-        <h2 className="text-sm font-bold">Nueva orden</h2>
-        <label className="sr-only" htmlFor="cli">Cliente</label>
-        <select id="cli" className="rounded border p-2" value={clienteId} onChange={(e) => { setClienteId(e.target.value); setEquipoId(""); }} required>
-          <option value="">Cliente…</option>
-          {clientes.map((c) => (
-            <option key={c.id} value={c.id}>{c.nombre} — {c.cedulaRif}</option>
+      {ordenes.length === 0 ? (
+        <EmptyState>Sin órdenes todavía.</EmptyState>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-2">
+          {ordenes.map((o) => (
+            <li key={o.id}>
+              <a href={`/ordenes/${o.id}`}>
+                <Card className="transition-colors hover:border-emerald-600">
+                  <p className="text-sm">
+                    <strong>{o.codigo}</strong> <EstadoBadge estado={o.estado} />
+                  </p>
+                  <p className="text-sm text-stone-500">{o.equipo.marca} {o.equipo.modelo} · {o.equipo.cliente.nombre} · {o.fallaDeclarada}</p>
+                </Card>
+              </a>
+            </li>
           ))}
-        </select>
-        <label className="sr-only" htmlFor="eq">Equipo</label>
-        <select id="eq" className="rounded border p-2" value={equipoId} onChange={(e) => setEquipoId(e.target.value)} required>
-          <option value="">Equipo…</option>
-          {equipos.map((q) => (
-            <option key={q.id} value={q.id}>{q.marca} {q.modelo}</option>
-          ))}
-        </select>
-        <label className="sr-only" htmlFor="falla">Falla declarada</label>
-        <input id="falla" className="rounded border p-2" placeholder="Falla declarada" value={falla} onChange={(e) => setFalla(e.target.value)} required minLength={3} />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button className="rounded bg-black p-2 text-white">Crear OT</button>
-      </form>
-
-      <ul className="mt-4 divide-y">
-        {ordenes.map((o) => (
-          <li key={o.id} className="py-2 text-sm">
-            <a className="underline" href={`/ordenes/${o.id}`}>
-              <strong>{o.codigo}</strong>
-            </a>{" "}
-            — {o.estado} — {o.equipo.marca} {o.equipo.modelo} ({o.equipo.cliente.nombre})
-          </li>
-        ))}
-      </ul>
-      {ordenes.length === 0 && <p className="mt-2 text-sm opacity-60">Sin órdenes todavía.</p>}
-    </main>
+        </ul>
+      )}
+    </Page>
   );
 }
