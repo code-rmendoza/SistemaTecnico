@@ -37,7 +37,7 @@
     "@types/react-dom": "18.3.0",
     "@vitest/coverage-v8": "^2.0.5",
     "autoprefixer": "10.6.1",
-    "eslint": "8.57.0",
+    "eslint": "10.11.0",
     "eslint-config-next": "^14.2.35",
     "postcss": "8.4.41",
     "prisma": "5.18.0",
