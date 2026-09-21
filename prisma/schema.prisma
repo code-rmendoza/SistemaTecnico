@@ -87,6 +87,35 @@ model Orden {
   garantiaDias   Int         @default(30)
   creadoEn       DateTime    @default(now())
   equipo         Equipo      @relation(fields: [equipoId], references: [id])
+  historial      EstadoHistorial[]
+  presupuesto    Presupuesto?
+}
+
+model EstadoHistorial {
+  id        String      @id @default(cuid())
+  ordenId   String
+  orden     Orden       @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  de        OrderStatus
+  a         OrderStatus
+  usuario   String
+  fecha     DateTime    @default(now())
+
+  @@index([ordenId])
+}
+
+model Presupuesto {
+  id           String   @id @default(cuid())
+  ordenId      String   @unique
+  orden        Orden    @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  manoObraUSD  Decimal  @db.Decimal(12, 2)
+  tasaRef      Decimal  @db.Decimal(18, 2)
+  totalUSDRef  Decimal  @db.Decimal(14, 2)
+  totalVES     Decimal  @db.Decimal(14, 2)
+  validezDias  Int      @default(7)
+  aprobada     Boolean  @default(false)
+  aprobadaPor  String?
+  aprobadaEn   DateTime?
+  creadoEn     DateTime @default(now())
 }
 
 model TasaCambio {
