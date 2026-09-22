@@ -6,13 +6,34 @@ import { requireRole } from "@/lib/require-role";
 const prisma = new PrismaClient();
 
 const FotoInput = z.object({
-  url: z.string().url(),
+  url: z.string().url().max(2048),
   tipo: z.enum(["equipo", "dano", "reparacion", "otro"]).default("equipo"),
-  nota: z.string().optional(),
+  nota: z.string().max(500).optional(),
 });
 
+/** Solo permite URLs de imagen (data: o https con extensión de imagen). */
+function isAllowedImageUrl(url: string): boolean {
+  if (url.startsWith("data:image/")) return url.length < 5_000_000; // ~5MB base64
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    const path = u.pathname.toLowerCase();
+    return /\.(jpg|jpeg|png|gif|webp|heic|bmp)(\?.*)?$/.test(path) || path === "/";
+  } catch {
+    return false;
+  }
+}
+
+async function ordenPertenece(ordenId: string, userId: string): Promise<boolean> {
+  const orden = await prisma.orden.findUnique({ where: { id: ordenId }, select: { tecnicoId: true } });
+  return orden?.tecnicoId === userId;
+}
+
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
-  requireRole(["admin", "recepcion", "tecnico"]);
+  const actor = requireRole(["admin", "recepcion", "tecnico"]);
+  if (actor.rol === "tecnico" && !(await ordenPertenece(params.id, actor.sub))) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 404 });
+  }
   try {
     const fotos = await prisma.foto.findMany({
       where: { ordenId: params.id },
@@ -25,10 +46,16 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  requireRole(["admin", "recepcion", "tecnico"]);
+  const actor = requireRole(["admin", "recepcion", "tecnico"]);
+  if (actor.rol === "tecnico" && !(await ordenPertenece(params.id, actor.sub))) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 404 });
+  }
   const body = FotoInput.safeParse(await req.json().catch(() => null));
   if (!body.success) {
     return NextResponse.json({ error: "Datos de foto inválidos" }, { status: 400 });
+  }
+  if (!isAllowedImageUrl(body.data.url)) {
+    return NextResponse.json({ error: "URL de imagen no permitida (solo jpg/png/gif/webp, máx 5MB)" }, { status: 422 });
   }
   try {
     const foto = await prisma.foto.create({

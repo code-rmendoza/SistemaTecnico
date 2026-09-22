@@ -228,3 +228,18 @@ model CajaDiaria {
   contadoUSD  Decimal?  @db.Decimal(14, 2)
   cerradaEn   DateTime?
 }
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  usuarioId String
+  accion    String
+  recurso   String
+  recursoId String?
+  detalles  String?
+  ip        String?
+  creadoEn  DateTime @default(now())
+
+  @@index([usuarioId])
+  @@index([recurso, recursoId])
+  @@index([creadoEn])
+}

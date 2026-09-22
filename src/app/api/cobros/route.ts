@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { requireRole } from "@/lib/require-role";
 import { rateLimit } from "@/lib/rate-limit";
+import { auditLog } from "@/lib/audit";
 import { CobroLinea } from "@/modules/billing/schemas";
 import { imputarCobro } from "@/modules/billing/cobros";
 import { hoyVE } from "@/lib/fecha";
@@ -32,19 +33,8 @@ export async function POST(req: NextRequest) {
     if (!orden?.presupuesto) {
       return NextResponse.json({ error: "La orden no tiene presupuesto" }, { status: 422 });
     }
-    const cobrados = await prisma.cobro.aggregate({
-      where: { ordenId: body.data.ordenId },
-      _sum: { totalVES: true }
-    });
-    const total = Number(orden.presupuesto.totalVES);
-    const saldo = total - Number(cobrados._sum.totalVES ?? 0);
-    if (saldo <= 0) {
-      return NextResponse.json({ error: "La orden ya está pagada" }, { status: 422 });
-    }
     let tasa = body.data.tasaCobro;
     if (!tasa) {
-      // $queryRaw en vez del cliente tipado: evita un paradox de tipos del
-      // generated client con Decimal en este proyecto (ver tsc 2026-09-21).
       const rows = await prisma.$queryRaw<{ valor: unknown }[]>`
         SELECT "valorVESporUSD" AS valor FROM "TasaCambio" ORDER BY fecha DESC LIMIT 1`;
       if (rows.length === 0) {
@@ -52,22 +42,29 @@ export async function POST(req: NextRequest) {
       }
       tasa = Number(rows[0].valor);
     }
-    let imputado;
-    try {
-      imputado = imputarCobro({ totalVES: saldo, tasaCobro: tasa, lineas: body.data.lineas });
-    } catch (e) {
-      return NextResponse.json(
-        { error: e instanceof Error ? e.message : "Cobro inválido" },
-        { status: 422 }
-      );
-    }
     const fecha = new Date(hoyVE());
     const porMoneda: Record<string, number> = {};
     for (const l of body.data.lineas) {
       porMoneda[l.moneda] = (porMoneda[l.moneda] ?? 0) + l.monto;
     }
-    const cubierto = imputado.entregadoVES - imputado.vueltoVES;
+    // Re-verificar saldo DENTRO de la transacción para evitar race condition
     const resultado = await prisma.$transaction(async (tx) => {
+      const cobrados = await tx.cobro.aggregate({
+        where: { ordenId: body.data.ordenId },
+        _sum: { totalVES: true }
+      });
+      const total = Number(orden.presupuesto!.totalVES);
+      const saldo = total - Number(cobrados._sum.totalVES ?? 0);
+      if (saldo <= 0) {
+        throw new Error("SALDO_CERO");
+      }
+      let imputado;
+      try {
+        imputado = imputarCobro({ totalVES: saldo, tasaCobro: tasa!, lineas: body.data.lineas });
+      } catch (e) {
+        throw new Error(`IMPUTACION:${e instanceof Error ? e.message : "Cobro inválido"}`);
+      }
+      const cubierto = imputado.entregadoVES - imputado.vueltoVES;
       const cobro = await tx.cobro.create({
         data: {
           ordenId: body.data.ordenId,
@@ -111,10 +108,17 @@ export async function POST(req: NextRequest) {
           }
         });
       }
-      return cobro;
+      return { cobro, vueltoVES: imputado.vueltoVES };
     });
-    return NextResponse.json({ ok: true, cobro: resultado, vueltoVES: imputado.vueltoVES }, { status: 201 });
-  } catch {
+    await auditLog({ usuarioId: actor.sub, accion: "COBRO_CREADO", recurso: "cobro", recursoId: resultado.cobro.id, detalles: `Orden ${orden.codigo}, ${Number(resultado.cobro.totalVES)} Bs` });
+    return NextResponse.json({ ok: true, cobro: resultado.cobro, vueltoVES: resultado.vueltoVES }, { status: 201 });
+  } catch (e) {
+    if (e instanceof Error && e.message === "SALDO_CERO") {
+      return NextResponse.json({ error: "La orden ya está pagada" }, { status: 422 });
+    }
+    if (e instanceof Error && e.message.startsWith("IMPUTACION:")) {
+      return NextResponse.json({ error: e.message.slice(11) }, { status: 422 });
+    }
     return NextResponse.json({ ok: false, error: "Servicio no disponible" }, { status: 503 });
   }
 }
