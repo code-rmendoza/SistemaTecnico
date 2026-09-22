@@ -1,29 +1,43 @@
 # Changelog
 
 ## [1.1.0] - 2026-09-21
+
 ### Added
-- Órdenes reales: alta, detalle, transiciones, presupuesto con items y aprobación
-- Descuento atómico de stock al aprobar (bloquea 422 sin stock)
-- Clientes/equipos reales: alta, edición, búsqueda, 409 en duplicadas
-- Inventario real: movimientos auditados en transacción
-- Caja real: tasa vigente, cobros con saldo/vuelto, cierre dual
-- Reportes: ingresos por día/método, ticket promedio, cuentas por cobrar
-- Login contra usuarios en DB + script users:create
-- Navegación en la home
+- Asignar técnico a órdenes (dropdown en detalle, badge en lista)
+- Fotos de equipos/daño (upload por URL o archivo, galería, eliminación)
+- Reportes con filtros por rango de fechas
+- Exportar CSV (cobros por día, métodos de pago, cuentas por cobrar)
+- Rate-limit general en APIs críticas (cobros, caja, transiciones, presupuesto)
+- Security headers (CSP, X-Frame-Options, HSTS, Referrer-Policy)
+- `.env.example` con variables documentadas
+- `capability-map.md` con mapa de capacidades del sistema
+
+### Changed
+- UI modernizada: sidebar colapsable con SVG icons, topbar glass-blur
+- Dashboard con stats reales del backend (KPIs, pipeline, gráfico 7 días)
+- Toast notifications flotantes (reemplaza alerts inline)
+- Skeleton components para loading states
+- Sidebar responsive con hamburger en mobile
+- Pagination reutilizable en todas las listas
+- Login centrado con gradient background y branding
+- Órdenes detalle con tabs (Flujo/Presupuesto/Fotos/Historial)
+- Móvil page con datos reales de la API
+- Inventario y Usuarios con tablas y búsqueda
 
 ## [1.0.0] - 2026-09-21
+
 ### Added
-- Órdenes de servicio con estados auditados, presupuesto USD/VES y consumo de stock atómico
-- Clientes/equipos con búsqueda por cédula/teléfono e historial
-- Inventario con movimientos auditados, alerta de mínimo y kardex
-- Billing dual VES/USD: tasa diaria manual, cobros mixtos, vuelto en Bs., caja dual
-- Portal cliente (código + cédula) y móvil para técnicos
-- Auth por roles (JWT httpOnly) con rate-limit, `/api/health`, security headers
-- CI con lint, tipos, tests, build y audit advisory; e2e Playwright
-
-### Fixed
-- Enforcement de roles movido de middleware (no se ejecutaba) a layouts server
-- CSP con `unsafe-eval` solo en dev (rompía el HMR)
-
-### Security
-- Next.js 14.2.5 → 14.2.35, Playwright → 1.63; resto documentado en ADR-004
+- Auth JWT httpOnly 8h con 4 roles (admin/recepcion/tecnico/cliente)
+- Enforcement de roles en layouts server
+- CRUD completo: clientes, equipos, inventario, órdenes
+- Presupuestos con aprobación y deducción atómica de stock
+- Cobros duales VES/USD con imputación mixta
+- Caja diaria (apertura/cierre/movimientos)
+- Tasa de cambio manual diaria
+- Portal público para consulta de clientes
+- State machine de 9 estados para órdenes
+- Dashboard con estadísticas
+- CI/CD: lint, tsc, test+coverage, build, audit
+- Deploy: Vercel + Neon PostgreSQL
+- 43 tests unitarios/integración + 6 e2e
+- ADRs (001-004)

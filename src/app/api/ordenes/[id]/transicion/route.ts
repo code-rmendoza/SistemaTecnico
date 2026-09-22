@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { requireRole } from "@/lib/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 import { canTransition, OrderStatus } from "@/lib/order-status";
 
 const prisma = new PrismaClient();
@@ -10,6 +11,9 @@ const TransicionInput = z.object({ a: OrderStatus });
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const actor = requireRole(["admin", "recepcion", "tecnico"]);
+  if (!rateLimit({ clave: `transicion:${actor.sub}`, max: 20, ventanaMs: 60_000 })) {
+    return NextResponse.json({ error: "Demasiadas peticiones" }, { status: 429 });
+  }
   const body = TransicionInput.safeParse(await req.json().catch(() => null));
   if (!body.success) {
     return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
