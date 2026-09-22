@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { requireRole } from "@/lib/require-role";
 import { rateLimit } from "@/lib/rate-limit";
+import { auditLog } from "@/lib/audit";
 import { canTransition, OrderStatus } from "@/lib/order-status";
 
 const prisma = new PrismaClient();
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       },
       include: { historial: { orderBy: { fecha: "asc" } }, presupuesto: true }
     });
+    await auditLog({ usuarioId: actor.sub, accion: "TRANSICION", recurso: "orden", recursoId: params.id, detalles: `${orden.estado} → ${body.data.a}` });
     return NextResponse.json({ ok: true, orden: actualizada });
   } catch {
     return NextResponse.json({ ok: false, error: "Servicio no disponible" }, { status: 503 });

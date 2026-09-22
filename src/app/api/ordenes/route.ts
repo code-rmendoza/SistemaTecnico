@@ -19,12 +19,14 @@ async function siguienteCodigo(): Promise<string> {
 }
 
 export async function GET(req: NextRequest) {
-  requireRole(["admin", "recepcion", "tecnico"]);
+  const actor = requireRole(["admin", "recepcion", "tecnico"]);
   const codigo = req.nextUrl.searchParams.get("codigo")?.trim();
   try {
     if (codigo) {
+      const where: Record<string, unknown> = { codigo: { equals: codigo, mode: "insensitive" } };
+      if (actor.rol === "tecnico") where.tecnicoId = actor.sub;
       const orden = await prisma.orden.findFirst({
-        where: { codigo: { equals: codigo, mode: "insensitive" } },
+        where,
         include: { equipo: { include: { cliente: true } }, presupuesto: true }
       });
       if (!orden) return NextResponse.json({ error: "Orden no encontrada" }, { status: 404 });
@@ -41,7 +43,9 @@ export async function GET(req: NextRequest) {
         saldoVES: total - Number(cobrados._sum.totalVES ?? 0)
       });
     }
+    const where = actor.rol === "tecnico" ? { tecnicoId: actor.sub } : {};
     const ordenes = await prisma.orden.findMany({
+      where,
       orderBy: { creadoEn: "desc" },
       take: 50,
       include: { equipo: { include: { cliente: true } } }

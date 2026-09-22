@@ -3,6 +3,7 @@ import { z } from "zod";
 import { PrismaClient } from "@prisma/client";
 import { signSession, verifyPassword } from "@/lib/auth";
 import { crearVentana } from "@/modules/portal/service";
+import { auditLog } from "@/lib/audit";
 
 const prisma = new PrismaClient();
 
@@ -46,12 +47,19 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Servicio no disponible" }, { status: 503 });
   }
-  if (!user) return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
+  if (!user) {
+    await auditLog({ usuarioId: body.data.email, accion: "LOGIN_FAILED", recurso: "auth", ip: ipDe(req), detalles: "Usuario no encontrado" });
+    return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
+  }
 
   const ok = await verifyPassword(body.data.password, user.passwordHash);
-  if (!ok) return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
+  if (!ok) {
+    await auditLog({ usuarioId: user.email, accion: "LOGIN_FAILED", recurso: "auth", ip: ipDe(req), detalles: "Password incorrecto" });
+    return NextResponse.json({ error: "Credenciales inválidas" }, { status: 401 });
+  }
 
   const token = signSession({ sub: user.email, rol: user.rol }, getSecret());
+  await auditLog({ usuarioId: user.email, accion: "LOGIN_OK", recurso: "auth", ip: ipDe(req) });
   const res = NextResponse.json({ ok: true, rol: user.rol, nombre: user.nombre });
   res.cookies.set("session", token, {
     httpOnly: true,
