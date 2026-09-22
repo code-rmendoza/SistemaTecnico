@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { requireRole } from "@/lib/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 import { CobroLinea } from "@/modules/billing/schemas";
 import { imputarCobro } from "@/modules/billing/cobros";
 import { hoyVE } from "@/lib/fecha";
@@ -16,6 +17,9 @@ const CobroInput = z.object({
 
 export async function POST(req: NextRequest) {
   const actor = requireRole(["admin", "recepcion"]);
+  if (!rateLimit({ clave: `cobros:${actor.sub}`, max: 30, ventanaMs: 60_000 })) {
+    return NextResponse.json({ error: "Demasiadas peticiones" }, { status: 429 });
+  }
   const body = CobroInput.safeParse(await req.json().catch(() => null));
   if (!body.success) {
     return NextResponse.json({ error: "Cobro inválido" }, { status: 400 });

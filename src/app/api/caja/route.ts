@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { requireRole } from "@/lib/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 import { hoyVE } from "@/lib/fecha";
 
 const prisma = new PrismaClient();
@@ -37,6 +38,9 @@ const CierreInput = z.object({
 
 export async function POST(req: NextRequest) {
   const actor = requireRole(["admin", "recepcion"]);
+  if (!rateLimit({ clave: `caja:${actor.sub}`, max: 10, ventanaMs: 60_000 })) {
+    return NextResponse.json({ error: "Demasiadas peticiones" }, { status: 429 });
+  }
   const body = CierreInput.safeParse(await req.json().catch(() => null));
   if (!body.success) {
     return NextResponse.json({ error: "Cierre inválido" }, { status: 400 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { requireRole } from "@/lib/require-role";
+import { rateLimit } from "@/lib/rate-limit";
 import { PresupuestoInput } from "@/modules/orders/schemas";
 import { calcularPresupuesto } from "@/modules/orders/service";
 
@@ -8,7 +9,10 @@ const prisma = new PrismaClient();
 
 /** Crea/reemplaza el presupuesto (solo en DIAGNOSTICO o PRESUPUESTADA). */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  requireRole(["admin", "recepcion", "tecnico"]);
+  const actor = requireRole(["admin", "recepcion", "tecnico"]);
+  if (!rateLimit({ clave: `presupuesto:${actor.sub}`, max: 15, ventanaMs: 60_000 })) {
+    return NextResponse.json({ error: "Demasiadas peticiones" }, { status: 429 });
+  }
   const body = PresupuestoInput.safeParse(await req.json().catch(() => null));
   if (!body.success) {
     return NextResponse.json({ error: "Presupuesto inválido" }, { status: 400 });
@@ -94,6 +98,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 /** Aprueba el presupuesto (solo desde PRESUPUESTADA) y descuenta stock en la misma transacción. */
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const actor = requireRole(["admin", "recepcion"]);
+  if (!rateLimit({ clave: `aprobar:${actor.sub}`, max: 10, ventanaMs: 60_000 })) {
+    return NextResponse.json({ error: "Demasiadas peticiones" }, { status: 429 });
+  }
   try {
     const orden = await prisma.orden.findUnique({
       where: { id: params.id },
