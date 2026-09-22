@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { verifySession } from "@/lib/auth";
+import { fechaVE } from "@/lib/fecha";
 import { getDashboardStats } from "@/modules/dashboard/service";
 import { Card } from "@/components/ui";
 import { cn } from "@/components/cn";
@@ -67,7 +68,7 @@ export default async function Home() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-500">Resumen del taller · {new Date().toLocaleDateString("es-VE", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+        <p className="mt-1 text-sm text-slate-500">Resumen del taller · {fechaVE(undefined, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
       </div>
 
       {/* KPI Cards */}
